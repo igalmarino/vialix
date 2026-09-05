@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
+    <!-- The compass turns the idle puck's heading cone (and the heading camera mode) with the phone
+         while it stands still; without the sensors only the GPS course is shown. -->
+    <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
+
     <!-- Package visibility: to bind a text-to-speech engine for spoken guidance, and to find a
          speech recogniser for voice search (the mic button is hidden when there is none). -->
     <queries>

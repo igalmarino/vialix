@@ -9,6 +9,8 @@ import com.stadiamaps.ferrostar.core.FerrostarCore
 import com.stadiamaps.ferrostar.core.RouteDeviationHandler
 import com.stadiamaps.ferrostar.core.http.HttpClientProvider
 import com.stadiamaps.ferrostar.core.http.OkHttpClientProvider.Companion.toOkHttpClientProvider
+import com.galmarino.vialix.location.CompassHeadingProvider
+import com.galmarino.vialix.location.FusedLocationProvider
 import com.stadiamaps.ferrostar.core.location.AndroidLocationProvider
 import com.stadiamaps.ferrostar.core.location.NavigationLocationProvider
 import com.stadiamaps.ferrostar.core.location.SimulatedLocationProvider
@@ -54,16 +56,21 @@ class AppGraph(context: Context) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     /**
-     * Live positions come from the platform `LocationManager` (no Google Play Services, so the
-     * app stays fully open source and F-Droid friendly). The simulated provider is only switched
-     * on from the debug-only "Simulate driving" switch in Settings > Developer.
+     * Live positions come from Google Play's fused location provider when Play Services is on the
+     * device ([FusedLocationProvider.create] is `null` otherwise) and from the platform
+     * `LocationManager` via Ferrostar's [AndroidLocationProvider] on GMS-free ROMs. The simulated
+     * provider is only switched on from the debug-only "Simulate driving" switch in Settings >
+     * Developer.
      */
     val locationProvider: NavigationLocationProvider by lazy {
         NavigationLocationProvider(
-            liveProviding = AndroidLocationProvider(appContext),
+            liveProviding = FusedLocationProvider.create(appContext) ?: AndroidLocationProvider(appContext),
             simulatedProvider = SimulatedLocationProvider(warpFactor = 2u),
         )
     }
+
+    /** Compass for the idle puck and the heading camera while standing still; `null` without the sensor. */
+    val compass: CompassHeadingProvider? by lazy { CompassHeadingProvider.create(appContext) }
 
     /** Shared by routing and geocoding: one connection pool, one timeout, one set of identifying headers. */
     private val okHttpClient: OkHttpClient by lazy {

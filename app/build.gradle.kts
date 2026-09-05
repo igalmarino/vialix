@@ -112,6 +112,9 @@ dependencies {
     implementation(libs.ferrostar.ui.formatters)
     implementation(libs.maplibre.compose)
 
+    // Fused location on devices that have Play Services; the app falls back to LocationManager without it.
+    implementation(libs.play.services.location)
+
     implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp)
 
