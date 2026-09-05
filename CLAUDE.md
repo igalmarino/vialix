@@ -154,7 +154,8 @@ rotating top-down view centred in the visible part of the map.
 **Location puck.** While idle the puck is drawn by `LocationPuckLayer` in `MapLayers.kt` (accuracy
 circle, ~60° heading cone only when a course is available, 12 dp dot with a 2.5 dp white ring) from
 `NavigationUiState.location`; the view is given `showDefaultPuck = isNavigating` so Ferrostar's own
-arrow puck (styled by `NavigationPuckStyle`) takes over during guidance. Custom layers were needed
+arrow puck (Ferrostar's `NavigationMapPuckStyle`, built per theme by `navigationPuckStyle(paint)` in
+`MapLayers.kt`) takes over during guidance. Custom layers were needed
 because neither `NavigationMapPuckStyle` nor MapLibre Compose's `LocationPuck` exposes a heading
 cone — their bearing indicator is a dot-sized triangle.
 
@@ -297,6 +298,11 @@ the device locale with no injection point, so `NavigationScreen` supplies `withI
 `LocalizedDistanceFormatter` built from the settings. The same formatter and Ferrostar's
 `LocalizedDurationFormatter` are handed to `RoutePreviewSheetContent` and `ArrivalSheetContent`, so
 the preview, the arrival card and the banner agree; there are no app-side distance/duration formatters.
+`ui/Formatters.kt` is the one place the Ferrostar formatter is built: `rememberDistanceFormatter(settings)`
+(units from `Settings.units`, locale from the *guidance* language, so the banner's numbers match its
+text) and `rememberClockTimeFormatter(settings)` for the arrival clock; `NavigationScreen` uses
+them and `MainActivity` builds one for the search screen's result distances. Ferrostar's `Route`
+only has per-step durations; `navigation/Routes.kt` adds `Route.durationSeconds` for the trip total.
 This is why `ferrostar-ui-formatters` is a direct dependency.
 
 **Rerouting** is configured in `AppGraph`: `deviationHandler` asks for new routes to the remaining
@@ -335,15 +341,9 @@ config logic out of composables.
 - `android.newDsl=false` in `gradle.properties` keeps AGP 9 on the classic DSL, matching Ferrostar.
 - Ferrostar's Rust bindings are imported as `uniffi.ferrostar.*` (`Route`, `GeographicCoordinate`,
   `Waypoint`, ...). Those types are the app's domain model; don't wrap them without reason.
-- Unit tests are plain JUnit 4 on the JVM and cover the pure pieces: `NavConfig` fallbacks,
-  `RequestFailure`, `Attribution`, the `internal` helpers in `DestinationSheet.kt` / `MapLayers.kt`,
-  `SpokenLanguage`, `settings/Settings.kt`, the `search/` parser, URL builder and language mapping,
-  `SearchViewModel` (with a scripted `Geocoder`, `StandardTestDispatcher` + `Dispatchers.setMain`),
-  `CameraFollowMode` and its Ferrostar mapping, `TravelMode`, `Arrival`,
-  `arrivalTime`, `Route.viaName`, `ValhallaRouteProvider.optionsJson`, `places/` (repository with an in-memory `KeyValueStore`, codec),
-  `PoiLabelStylePatch`, `NightStylePatch`, `CssColor`, `Settings.resolvesToDark`, `UiLanguage`,
-  `NavConfig.mapStyleUrlFor` / `derivesNightStyle`, and the two map palettes `mapPaint` /
-  `mapChromeColors`. `unitTests.isReturnDefaultValues`
+- Unit tests are plain JUnit 4 on the JVM and cover the pure pieces (see `app/src/test`;
+  `SearchViewModel` is driven with a scripted `Geocoder`, `StandardTestDispatcher` +
+  `Dispatchers.setMain`). `unitTests.isReturnDefaultValues`
   is on, so `android.util.Log` is a no-op in tests. Pin the locale when testing anything that goes
   through `String.format`, and pass an explicit `Locale` to `SpokenLanguage` rather than relying on
   the ambient default. The `NavigationControllerConfigs` builders call uniffi functions (native) and
@@ -357,11 +357,8 @@ config logic out of composables.
   from `Attribution.creditFor(endpoint)`.
 - Release builds run R8 with resource shrinking (`proguard-rules.pro` plus Ferrostar's consumer
   rules for JNA/uniffi), and `ndk.abiFilters` keeps arm64-v8a, armeabi-v7a and x86_64 only.
-- Icons are hand-rolled 24 dp vector drawables in `res/drawable/` (Material Symbols path data:
-  `ic_menu`, `ic_mic`, `ic_location_searching` / `ic_my_location` / `ic_navigation` for the three
-  follow modes, `ic_directions_car` / `ic_directions_bike` / `ic_directions_walk` for the profile
-  switcher, `ic_flag` on the arrival card, `ic_home`, `ic_work`, `ic_history`, `ic_chevron_right`,
-  ...), not an icons library — keeps the dependency set mirroring Ferrostar's.
+- Icons are hand-rolled 24 dp vector drawables in `res/drawable/` (Material Symbols path data),
+  not an icons library — keeps the dependency set mirroring Ferrostar's.
 - Chrome drawn over the map (search pill, status-bar scrim, FAB stack) and the app's own map
   layers (puck, pin, Home/Work markers, route preview, Ferrostar's arrow puck via `navigationPuckStyle`) key on the
   resolved dark flag (`LocalDarkTheme`), **not** on `MaterialTheme.colorScheme`: `mapChromeColors(dark)`

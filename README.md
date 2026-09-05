@@ -86,7 +86,9 @@ app/src/main/java/com/galmarino/vialix/
 │   ├── NavigationViewModel.kt         Screen state: destination, route preview, errors, arrival, start/stop
 │   ├── Destination.kt                 Coordinate plus optional name/address (long-press or search result)
 │   ├── Arrival.kt, ArrivalTime.kt     Trip summary for the arrival card; arrival clock time (pure)
-│   ├── RouteVia.kt                    "via A1": the road that tells alternatives apart (pure)
+│   ├── RouteVia.kt, Routes.kt         "via A1": the road that tells alternatives apart; trip duration (pure)
+│   ├── CameraFollowMode.kt            Free -> follow -> follow-with-heading cycle of the my-location button (pure)
+│   ├── Geo.kt                         Haversine distance, for "how far is this result" (pure)
 │   └── NavigationControllerConfigs.kt Step-advance and deviation thresholds per travel mode
 ├── routing/
 │   ├── ClientIdInterceptor.kt         X-Client-Id / User-Agent on routing requests
@@ -104,10 +106,13 @@ app/src/main/java/com/galmarino/vialix/
 ├── places/
 │   ├── SavedPlaces.kt         Home/Work + recents value with dedupe and the 20-entry cap (pure)
 │   ├── SavedPlacesCodec.kt    JSON (de)serialisation (pure)
-│   └── SavedPlacesRepository.kt  StateFlow store over a KeyValueStore (SharedPreferences in the app)
+│   ├── SavedPlacesRepository.kt  StateFlow store over a KeyValueStore
+│   └── SharedPreferencesKeyValueStore.kt  The KeyValueStore the app binds it to
 ├── map/
 │   ├── PoiLabelStylePatch.kt  Fixes POI label wrapping in the style JSON (pure)
-│   ├── MapStyleLoader.kt      Downloads a style (light or dark) and applies the patch
+│   ├── NightStylePatch.kt     Recolours the light style into the night palette (pure)
+│   ├── CssColor.kt            CSS colour parsing / HSL, used by the night patch (pure)
+│   ├── MapStyleLoader.kt      Downloads a style and applies the patches (light or dark)
 │   └── MapStyleState.kt       Loading / Patched / Unavailable, what the map should load
 ├── voice/
 │   ├── VoiceGuidance.kt       Ferrostar AndroidTtsObserver, follows the settings store
@@ -122,10 +127,13 @@ app/src/main/java/com/galmarino/vialix/
     ├── DestinationSheet.kt    Route preview sheet content (name, mode switcher, alternatives, ETA, Retry, Start/Cancel)
     ├── ArrivalSheet.kt        "You've arrived" card with the trip summary
     ├── MenuDrawer.kt          Navigation drawer behind the menu icon: Settings, version, data credits
-    ├── MapLayers.kt           Location puck (dot, accuracy circle, heading cone), pin and route preview layers, per-theme paint
+    ├── MapLayers.kt           Location puck (dot, accuracy circle, heading cone), pin, Home/Work and route preview layers, per-theme paint
+    ├── Formatters.kt          Ferrostar distance / clock-time formatters following the units and guidance language
+    ├── RoutingProfiles.kt     The offered costing models (car / bicycle / walking), shared by preview and Settings
+    ├── RouteErrorText.kt, RequestFailureText.kt  Error enums -> user-facing strings
     ├── search/                Full-screen destination search (Home/Work + recents while empty, distances, retry)
     ├── settings/              Settings screen and its choice dialog
-    └── theme/Theme.kt         Material 3 theme (dynamic colour) + LocalDarkTheme
+    └── theme/                 Material 3 theme (dynamic colour, static blue palettes below API 31) + LocalDarkTheme
 ```
 
 ## Roadmap
