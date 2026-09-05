@@ -41,6 +41,7 @@
     <!-- Menu sheet -->
     <string name="about_version">Vialix %1$s</string>
     <string name="about_credits">Datos del mapa © colaboradores de OpenStreetMap · Rutas de %1$s · Búsqueda de %2$s</string>
+    <string name="menu_tagline">Navegación con datos abiertos</string>
 
     <!-- Search screen -->
     <string name="search_placeholder">Buscar un lugar o una dirección</string>

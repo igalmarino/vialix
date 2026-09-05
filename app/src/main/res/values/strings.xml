@@ -43,6 +43,7 @@
     <!-- Menu sheet -->
     <string name="about_version">Vialix %1$s</string>
     <string name="about_credits">Map data © OpenStreetMap contributors · Routing by %1$s · Search by %2$s</string>
+    <string name="menu_tagline">Navigation on open data</string>
 
     <!-- Search screen -->
     <string name="search_placeholder">Search for a place or address</string>
