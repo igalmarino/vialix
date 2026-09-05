@@ -1,0 +1,58 @@
+# Single source of truth for dependency versions.
+# The AGP / Kotlin / Compose / MapLibre Compose versions intentionally mirror the ones
+# Ferrostar 0.54.0 is built and tested against. In particular maplibre-compose MUST stay
+# on the version Ferrostar links against, or the UI modules will fail at runtime.
+
+[versions]
+agp = "9.0.1"
+kotlin = "2.3.20"
+composeBom = "2026.02.01"
+activityCompose = "1.13.0"
+lifecycle = "2.10.0"
+coreKtx = "1.17.0"
+coroutines = "1.11.0"
+ferrostar = "0.54.0"
+maplibreCompose = "0.13.0"
+okhttp = "5.3.2"
+desugarJdkLibs = "2.1.5"
+junit = "4.13.2"
+orgJson = "20250517"
+
+[libraries]
+# AndroidX
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+
+# Jetpack Compose (versions come from the BOM)
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+compose-ui = { group = "androidx.compose.ui", name = "ui" }
+compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+# Navigation engine (Ferrostar) and map rendering (MapLibre Compose)
+ferrostar-core = { group = "com.stadiamaps.ferrostar", name = "core", version.ref = "ferrostar" }
+ferrostar-ui-compose = { group = "com.stadiamaps.ferrostar", name = "ui-compose", version.ref = "ferrostar" }
+ferrostar-ui-maplibre = { group = "com.stadiamaps.ferrostar", name = "ui-maplibre", version.ref = "ferrostar" }
+ferrostar-ui-formatters = { group = "com.stadiamaps.ferrostar", name = "ui-formatters", version.ref = "ferrostar" }
+maplibre-compose = { group = "org.maplibre.compose", name = "maplibre-compose-android", version.ref = "maplibreCompose" }
+
+# Networking
+okhttp-bom = { group = "com.squareup.okhttp3", name = "okhttp-bom", version.ref = "okhttp" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp" }
+
+# Tooling
+desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
+
+# Testing
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+# Real org.json for unit tests: the one in the mockable android.jar throws "Stub!".
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

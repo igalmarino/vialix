@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark launch window in dark mode, close to the Compose dark surface and the dark basemap,
+         so cold start does not flash white (or mid-grey) before Compose draws. -->
+    <style name="Theme.Vialix" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FF111318</item>
+    </style>
+</resources>

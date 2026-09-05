@@ -1,0 +1,90 @@
+<resources>
+    <!-- Route preview sheet -->
+    <string name="dropped_pin_title">Marcador</string>
+    <string name="route_summary">%1$s · %2$s</string>
+    <string name="arrive_at">Llegada %1$s</string>
+    <string name="route_via">por %1$s</string>
+    <string name="fetching_route">Calculando ruta…</string>
+    <string name="start_navigation">Iniciar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="retry">Reintentar</string>
+
+    <!-- Arrival card -->
+    <string name="arrived_title">Has llegado</string>
+    <string name="done">Listo</string>
+
+    <!-- Map controls -->
+    <string name="menu">Menú</string>
+    <string name="search_hint">Busca o mantén pulsado el mapa</string>
+    <string name="voice_search">Búsqueda por voz</string>
+    <string name="voice_search_prompt">¿A dónde quieres ir?</string>
+    <string name="my_location_free">Centrar en mi ubicación</string>
+    <string name="my_location_follow">Siguiendo tu ubicación. Toca para seguir también tu rumbo</string>
+    <string name="my_location_heading">Siguiendo tu rumbo. Toca para dejar de seguir</string>
+    <string name="hint_choose_destination">Busca arriba o mantén pulsado el mapa para elegir un destino</string>
+
+    <!-- Saved places (search screen) -->
+    <string name="favorite_home">Casa</string>
+    <string name="favorite_work">Trabajo</string>
+    <string name="favorite_unset">Establecer ubicación</string>
+    <string name="favorite_options">Opciones de %1$s</string>
+    <string name="favorite_search_address">Buscar una dirección</string>
+    <string name="favorite_use_current_location">Usar mi ubicación actual</string>
+    <string name="favorite_clear">Quitar</string>
+    <string name="favorite_saved">%1$s guardado</string>
+    <string name="recent_header">Recientes</string>
+    <string name="recent_clear">Borrar</string>
+    <string name="recent_clear_confirm_title">¿Borrar destinos recientes?</string>
+    <string name="recent_clear_confirm_text">Casa y Trabajo se conservan.</string>
+    <string name="recent_remove">Quitar de recientes</string>
+
+    <!-- Menu sheet -->
+    <string name="about_version">Vialix %1$s</string>
+    <string name="about_credits">Datos del mapa © colaboradores de OpenStreetMap · Rutas de %1$s · Búsqueda de %2$s</string>
+
+    <!-- Search screen -->
+    <string name="search_placeholder">Buscar un lugar o una dirección</string>
+    <string name="search_clear">Borrar búsqueda</string>
+    <string name="search_assign_header">Elige un lugar para guardar como %1$s</string>
+    <string name="search_no_results">No se encontraron lugares para “%1$s”</string>
+    <string name="search_server_error">El servidor de búsqueda devolvió un error (%1$d). Inténtalo más tarde.</string>
+    <string name="search_error">La búsqueda falló. Inténtalo de nuevo.</string>
+
+    <!-- Settings -->
+    <string name="settings">Ajustes</string>
+    <string name="back">Atrás</string>
+    <string name="section_guidance">Guía</string>
+    <string name="section_routing">Rutas</string>
+    <string name="section_appearance">Apariencia</string>
+    <string name="section_developer">Desarrollador</string>
+    <string name="setting_voice_language">Idioma de la voz</string>
+    <string name="language_system_default">Predeterminado del sistema (%1$s)</string>
+    <string name="setting_voice_guidance">Guía por voz</string>
+    <string name="setting_voice_guidance_summary">Anunciar las maniobras durante la navegación</string>
+    <string name="setting_routing_profile">Perfil</string>
+    <string name="profile_car">Coche</string>
+    <string name="profile_bicycle">Bicicleta</string>
+    <string name="profile_walking">A pie</string>
+    <string name="setting_units">Unidades</string>
+    <string name="units_metric">Kilómetros</string>
+    <string name="units_imperial">Millas</string>
+    <string name="setting_theme">Tema</string>
+    <string name="theme_system">Predeterminado del sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
+    <string name="setting_app_language">Idioma de la aplicación</string>
+    <string name="simulate_driving">Simular conducción</string>
+    <string name="simulate_driving_summary">Reproduce la ruta en lugar de usar el GPS. Se restablece al reiniciar la aplicación.</string>
+
+    <string name="permission_title">Se necesita la ubicación</string>
+    <string name="permission_rationale">Vialix necesita acceso a la ubicación precisa para mostrar dónde estás y guiarte por la ruta. Tu posición se envía al servidor de rutas (como inicio de una ruta o de una estimación del tiempo de viaje a Casa/Trabajo) y al servidor de búsqueda (para mostrar primero los resultados cercanos), y a ningún otro sitio.</string>
+    <string name="permission_retry">Permitir acceso a la ubicación</string>
+    <string name="permission_denied_permanently">El acceso a la ubicación está desactivado para Vialix. Actívalo en los ajustes de la aplicación para continuar.</string>
+    <string name="permission_open_settings">Abrir ajustes de la aplicación</string>
+
+    <string name="error_no_fix_yet">Esperando la señal GPS. Inténtalo de nuevo en un momento.</string>
+    <string name="error_no_route">No se encontró una ruta a ese destino.</string>
+    <string name="error_offline">Sin conexión a internet. Comprueba la red e inténtalo de nuevo.</string>
+    <string name="error_route_server">El servidor de rutas devolvió un error (%1$d). Inténtalo más tarde.</string>
+    <string name="error_route_request">La solicitud de ruta falló. Inténtalo de nuevo.</string>
+</resources>

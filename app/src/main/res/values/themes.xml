@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launch window approximates the Compose light surface so cold start does not flash a
+         different shade before the first frame. -->
+    <style name="Theme.Vialix" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FFF9F9FF</item>
+    </style>
+</resources>

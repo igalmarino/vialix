@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug-only additions, merged into the main manifest by AGP. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Lets debug builds talk to a self-hosted Valhalla/Photon over plain http on the emulator
+         host (10.0.2.2) or localhost; see local.properties.example. Release builds keep the
+         platform default of blocking all cleartext traffic. -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

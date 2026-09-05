@@ -1,0 +1,36 @@
+# Copy to local.properties (git-ignored). Every key is optional.
+
+# Android SDK location (Android Studio writes this for you).
+sdk.dir=/opt/android-sdk
+
+# Routing server. Any Valhalla-compatible endpoint works, e.g.
+#   https://valhalla1.openstreetmap.de/route              (FOSSGIS demo server, default)
+#   https://api.stadiamaps.com/route/v1?api_key=YOUR_KEY  (hosted Valhalla, free tier)
+#   http://10.0.2.2:8002/route                            (self-hosted Valhalla in Docker, from an emulator;
+#                                                          plain http works in debug builds only)
+#valhallaEndpoint=
+
+# Valhalla costing model: auto, bicycle, pedestrian, motorcycle, truck, ...
+# First-launch default only: the in-app Settings screen overrides it and the choice is remembered.
+#routingProfile=auto
+
+# MapLibre style JSON. Default is OpenFreeMap "liberty" (free, no key).
+#mapStyleUrl=https://tiles.openfreemap.org/styles/liberty
+
+# Optional MapLibre style JSON for dark mode. Blank (the default): the app recolours mapStyleUrl
+# into a night palette at runtime, keeping its POIs and road hierarchy. Set it to use a ready-made
+# dark style as-is instead.
+#mapStyleUrlDark=https://tiles.openfreemap.org/styles/dark
+
+# Sent as X-Client-Id so public server operators can identify the app.
+#clientId=com.galmarino.vialix
+
+# Whether spoken guidance starts out enabled (true/false). First-launch default only: the
+# Settings screen and the mute button in the navigation view override it and the choice is
+# remembered.
+#voiceGuidance=true
+
+# Geocoder for the destination search. Any Photon-compatible /api endpoint works, e.g.
+#   https://photon.komoot.io/api      (komoot public instance, default; fair use only, no SLA)
+#   http://10.0.2.2:2322/api          (self-hosted Photon in Docker, from an emulator; debug builds only)
+#geocoderEndpoint=

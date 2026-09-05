@@ -1,0 +1,92 @@
+<resources>
+    <string name="app_name" translatable="false">Vialix</string>
+
+    <!-- Route preview sheet -->
+    <string name="dropped_pin_title">Dropped pin</string>
+    <string name="route_summary">%1$s · %2$s</string>
+    <string name="arrive_at">Arrive %1$s</string>
+    <string name="route_via">via %1$s</string>
+    <string name="fetching_route">Calculating route…</string>
+    <string name="start_navigation">Start</string>
+    <string name="cancel">Cancel</string>
+    <string name="retry">Retry</string>
+
+    <!-- Arrival card -->
+    <string name="arrived_title">You\'ve arrived</string>
+    <string name="done">Done</string>
+
+    <!-- Map controls -->
+    <string name="menu">Menu</string>
+    <string name="search_hint">Search or long-press map</string>
+    <string name="voice_search">Voice search</string>
+    <string name="voice_search_prompt">Where do you want to go?</string>
+    <string name="my_location_free">Center on my location</string>
+    <string name="my_location_follow">Following your location. Tap to follow your heading too</string>
+    <string name="my_location_heading">Following your heading. Tap to stop following</string>
+    <string name="hint_choose_destination">Search above or long-press the map to choose a destination</string>
+
+    <!-- Saved places (search screen) -->
+    <string name="favorite_home">Home</string>
+    <string name="favorite_work">Work</string>
+    <string name="favorite_unset">Set location</string>
+    <string name="favorite_options">Options for %1$s</string>
+    <string name="favorite_search_address">Search for an address</string>
+    <string name="favorite_use_current_location">Use my current location</string>
+    <string name="favorite_clear">Remove</string>
+    <string name="favorite_saved">%1$s saved</string>
+    <string name="recent_header">Recent</string>
+    <string name="recent_clear">Clear</string>
+    <string name="recent_clear_confirm_title">Clear recent destinations?</string>
+    <string name="recent_clear_confirm_text">Home and Work are kept.</string>
+    <string name="recent_remove">Remove from recents</string>
+
+    <!-- Menu sheet -->
+    <string name="about_version">Vialix %1$s</string>
+    <string name="about_credits">Map data © OpenStreetMap contributors · Routing by %1$s · Search by %2$s</string>
+
+    <!-- Search screen -->
+    <string name="search_placeholder">Search for a place or address</string>
+    <string name="search_clear">Clear search</string>
+    <string name="search_assign_header">Choose a place to save as %1$s</string>
+    <string name="search_no_results">No places found for “%1$s”</string>
+    <string name="search_server_error">The search server returned an error (%1$d). Try again later.</string>
+    <string name="search_error">Search failed. Try again.</string>
+
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="section_guidance">Guidance</string>
+    <string name="section_routing">Routing</string>
+    <string name="section_appearance">Appearance</string>
+    <string name="section_developer">Developer</string>
+    <string name="setting_voice_language">Voice language</string>
+    <string name="language_system_default">System default (%1$s)</string>
+    <string name="setting_voice_guidance">Voice guidance</string>
+    <string name="setting_voice_guidance_summary">Speak manoeuvres while navigating</string>
+    <string name="setting_routing_profile">Profile</string>
+    <string name="profile_car">Car</string>
+    <string name="profile_bicycle">Bicycle</string>
+    <string name="profile_walking">Walking</string>
+    <string name="setting_units">Units</string>
+    <string name="units_metric">Kilometres</string>
+    <string name="units_imperial">Miles</string>
+    <string name="setting_theme">Theme</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="setting_app_language">App language</string>
+    <string name="simulate_driving">Simulate driving</string>
+    <string name="simulate_driving_summary">Replay the route instead of using GPS. Resets when the app restarts.</string>
+
+    <string name="permission_title">Location is required</string>
+    <string name="permission_rationale">Vialix needs precise location access to show where you are and to guide you along the route. Your position is sent to the routing server (as the start of a route or of a Home/Work travel-time estimate) and to the search server (to rank nearby results first), and nowhere else.</string>
+    <string name="permission_retry">Grant location access</string>
+    <string name="permission_denied_permanently">Location access has been turned off for Vialix. Enable it in the app\'s settings to continue.</string>
+    <string name="permission_open_settings">Open app settings</string>
+
+    <string name="error_no_fix_yet">Still waiting for a GPS fix. Try again in a moment.</string>
+    <string name="error_no_route">No route found to that destination.</string>
+    <string name="error_offline">No internet connection. Check your network and try again.</string>
+    <string name="error_route_server">The routing server returned an error (%1$d). Try again later.</string>
+    <string name="error_route_request">Route request failed. Try again.</string>
+</resources>
