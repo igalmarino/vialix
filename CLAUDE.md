@@ -294,16 +294,15 @@ is built with `org.json`.
 
 **Units in Ferrostar's own views.** `NavigationViewComponentBuilder.Default()` formats distances for
 the device locale with no injection point, so `NavigationScreen` supplies `withInstructionsView` /
-`withProgressView` that call the same public `InstructionsView` / `TripProgressView` with a
-`LocalizedDistanceFormatter` built from the settings. The same formatter and Ferrostar's
-`LocalizedDurationFormatter` are handed to `RoutePreviewSheetContent` and `ArrivalSheetContent`, so
-the preview, the arrival card and the banner agree; there are no app-side distance/duration formatters.
-`ui/Formatters.kt` is the one place the Ferrostar formatter is built: `rememberDistanceFormatter(settings)`
-(units from `Settings.units`, locale from the *guidance* language, so the banner's numbers match its
-text) and `rememberClockTimeFormatter(settings)` for the arrival clock; `NavigationScreen` uses
-them and `MainActivity` builds one for the search screen's result distances. Ferrostar's `Route`
-only has per-step durations; `navigation/Routes.kt` adds `Route.durationSeconds` for the trip total.
-This is why `ferrostar-ui-formatters` is a direct dependency.
+`withProgressView` that call the same public `InstructionsView` / `TripProgressView` with the
+`LocalizedDistanceFormatter` from `rememberDistanceFormatter(settings)` (`ui/Formatters.kt`: units
+from `Settings.units`, locale from the *guidance* language so the banner's numbers match its text;
+`rememberClockTimeFormatter` next to it is the arrival clock). The same formatter and Ferrostar's
+`LocalizedDurationFormatter` are handed to `RoutePreviewSheetContent`, `ArrivalSheetContent` and (via
+`MainActivity`) the search results, so every distance and duration in the app agrees; the app has no
+formatting logic of its own, which is why `ferrostar-ui-formatters` is a direct dependency.
+Ferrostar's `Route` only has per-step durations; `navigation/Routes.kt` adds `Route.durationSeconds`
+for the trip total.
 
 **Rerouting** is configured in `AppGraph`: `deviationHandler` asks for new routes to the remaining
 waypoints, `alternativeRouteProcessor` swaps the first one in via `core.replaceRoute`. Thresholds
