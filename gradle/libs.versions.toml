@@ -16,7 +16,7 @@ maplibreCompose = "0.13.0"
 okhttp = "5.3.2"
 desugarJdkLibs = "2.1.5"
 junit = "4.13.2"
-orgJson = "20250517"
+orgJson = "20260814"
 playServicesLocation = "21.4.0"
 
 [libraries]
