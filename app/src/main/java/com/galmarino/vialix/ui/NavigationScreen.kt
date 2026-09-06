@@ -460,7 +460,13 @@ private fun NavigationMap(
                     views =
                         NavigationViewComponentBuilder.Default()
                             .withInstructionsView { instructionsModifier, state ->
-                                val instruction = state.visualInstruction ?: return@withInstructionsView
+                                val instruction = state.visualInstruction
+                                if (instruction == null) {
+                                    // The core hides the banner while the user is completely off
+                                    // route; fill the gap so a slow reroute does not look like nothing.
+                                    if (state.isRerouting()) ReroutingBanner(instructionsModifier)
+                                    return@withInstructionsView
+                                }
                                 InstructionsView(
                                     instructions = instruction,
                                     distanceToNextManeuver = state.progress?.distanceToNextManeuver,
