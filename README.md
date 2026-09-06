@@ -19,7 +19,7 @@ route, and a foreground notification so guidance survives backgrounding.
 | Map tiles | [OpenFreeMap](https://openfreemap.org) "liberty" style | OSM-based, free, no API key |
 | Routing | [Valhalla](https://github.com/valhalla/valhalla) via the public FOSSGIS server | Open-source engine; the endpoint is a config value so any Valhalla instance works |
 | Geocoding | [Photon](https://github.com/komoot/photon) via komoot's public instance | Open-source OSM geocoder built for search-as-you-type; endpoint configurable, self-hostable |
-| Location | Android `LocationManager` (no Google Play Services) | Keeps the app fully FOSS / F-Droid friendly |
+| Location | Google Play fused location when Play Services is present, Android `LocationManager` otherwise | Faster, steadier fixes on Play devices; still runs on GMS-free ROMs |
 | Build | Android Gradle Plugin 9.0, Gradle 9.2, Kotlin 2.3, Java 17 bytecode target built on a JDK 25 toolchain, `minSdk` 29 | Same toolchain Ferrostar is tested with; Gradle 9.2 needs Java ≤ 25 |
 
 ## Build and run
@@ -77,7 +77,7 @@ All values are optional and live in `local.properties` (git-ignored) or environm
 ```
 app/src/main/java/com/galmarino/vialix/
 ├── NavApplication.kt          Application; owns the object graph
-├── AppGraph.kt                Wires FerrostarCore, location provider, HTTP client, geocoder, rerouting policy
+├── AppGraph.kt                Wires FerrostarCore, location provider, compass, HTTP client, geocoder, rerouting policy
 ├── NavConfig.kt               Endpoints / style / client id with defaults and validation
 ├── MainActivity.kt            Edge-to-edge Compose host
 ├── RequestFailure.kt          Offline / server error / other, so no exception text reaches the UI
@@ -88,8 +88,13 @@ app/src/main/java/com/galmarino/vialix/
 │   ├── Arrival.kt, ArrivalTime.kt     Trip summary for the arrival card; arrival clock time (pure)
 │   ├── RouteVia.kt, Routes.kt         "via A1": the road that tells alternatives apart; trip duration (pure)
 │   ├── CameraFollowMode.kt            Free -> follow -> follow-with-heading cycle of the my-location button (pure)
-│   ├── Geo.kt                         Haversine distance, for "how far is this result" (pure)
+│   ├── Geo.kt                         Haversine distance, bearing, move-along-bearing (pure)
+│   ├── DisplayLocation.kt             Moves the fix shown during guidance ahead, cancelling Ferrostar's 1 s puck animation lag (pure)
+│   ├── Heading.kt                     Compass heading as the idle course when the GPS has none; angle smoothing (pure)
 │   └── NavigationControllerConfigs.kt Step-advance and deviation thresholds per travel mode
+├── location/
+│   ├── CompassHeadingProvider.kt      Rotation-vector sensor -> true heading of the top of the screen
+│   └── FusedLocationProvider.kt       Google Play fused location; null without Play Services (then LocationManager)
 ├── routing/
 │   ├── ClientIdInterceptor.kt         X-Client-Id / User-Agent on routing requests
 │   └── ValhallaRouteProvider.kt       Valhalla requests that follow the current settings
@@ -142,12 +147,14 @@ app/src/main/java/com/galmarino/vialix/
 - Route options: avoid tolls/ferries
 - Offline maps (PMTiles) and offline routing (self-hosted or on-device Valhalla)
 - iOS: Ferrostar Swift bindings + a Kotlin Multiplatform module for the shared domain code
-- F-Droid metadata and a signed release pipeline (CI already builds, tests, lints and runs the R8 release build)
+- A `foss` build flavor without the Play Services location client, F-Droid metadata and a signed release pipeline (CI already builds, tests, lints and runs the R8 release build)
 
 ## License
 
 GNU General Public License v3.0 or later (GPL-3.0-or-later). See `LICENSE`.
 
-Third-party components keep their own licenses, all of which are GPL-compatible: Ferrostar and
-MapLibre (BSD-3-Clause), OkHttp and AndroidX (Apache-2.0). Map data
+Third-party components keep their own licenses: Ferrostar and MapLibre (BSD-3-Clause), OkHttp and
+AndroidX (Apache-2.0) are GPL-compatible. The one exception is the Google Play Services location
+client (proprietary, Android SDK licence), which is only used when Play Services is on the device;
+without it the app runs entirely on open-source components. Map data
 © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL); tiles by OpenFreeMap.

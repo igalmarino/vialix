@@ -7,7 +7,9 @@
 	// Pin to the Java 25 LTS that Gradle 9.2 supports. Without a version the feature
 	// installs the newest JDK (26), which Gradle 9.2.1 rejects.
 	"ghcr.io/devcontainers/features/java:1": { "version": "25" },
-	"ghcr.io/devcontainers/features/node:1": {}
+	"ghcr.io/devcontainers/features/node:1": {},
+	// GitHub CLI, so PRs can be opened from the terminal (and by Claude Code).
+	"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
 
 	// AGP reads ANDROID_HOME when local.properties (git-ignored) is absent.
@@ -22,12 +24,13 @@
 		"PATH": "/home/vscode/.local/bin:${containerEnv:PATH}:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools"
 	},
 
-	// Persist Gradle downloads and Claude Code login/settings across container rebuilds.
+	// Persist Gradle downloads, Claude Code login/settings and the gh login across container rebuilds.
 	// The volume names predate the OpenNav -> Vialix rename; renaming them would start with an
 	// empty Gradle cache and a fresh ~/.claude, so they are kept as they are.
 	"mounts": [
 		"source=vialix-gradle-cache,target=/home/vscode/.gradle,type=volume",
-		"source=vialix-claude-config,target=/home/vscode/.claude,type=volume"
+		"source=vialix-claude-config,target=/home/vscode/.claude,type=volume",
+		"source=vialix-gh-config,target=/home/vscode/.config/gh,type=volume"
 	],
 
 	// Installs the Android command-line tools, platform 36, build-tools 36.0.0 and platform-tools,

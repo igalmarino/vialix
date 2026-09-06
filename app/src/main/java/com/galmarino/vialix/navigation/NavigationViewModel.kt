@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -37,6 +38,7 @@ import com.galmarino.vialix.AppGraph
 import com.galmarino.vialix.BuildConfig
 import com.galmarino.vialix.NavConfig
 import com.galmarino.vialix.RequestFailure
+import com.galmarino.vialix.location.CompassHeadingProvider
 import com.galmarino.vialix.map.MapStyleLoader
 import com.galmarino.vialix.map.MapStyleState
 import com.galmarino.vialix.places.FavoriteKind
@@ -110,6 +112,7 @@ class NavigationViewModel(
     private val routeProvider: ValhallaRouteProvider,
     private val config: NavConfig,
     mapStyleLoader: MapStyleLoader,
+    private val compass: CompassHeadingProvider?,
 ) : DefaultNavigationViewModel(core, valhallaExtendedOSRMAnnotationPublisher()) {
 
     private val hasLocationPermission = MutableStateFlow(false)
@@ -121,6 +124,9 @@ class NavigationViewModel(
 
     /** Latest known position, independent of whether we are navigating. */
     val location: StateFlow<UserLocation?> = _location.asStateFlow()
+
+    /** Where the phone points (true north, whole degrees); `null` while not collected or without a sensor. */
+    private val compassHeading = MutableStateFlow<Int?>(null)
 
     private val _screenState = MutableStateFlow(ScreenState())
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
@@ -136,13 +142,26 @@ class NavigationViewModel(
     /** The map style with the POI label fix applied, or the decision to load the URL as-is. */
     val mapStyle: StateFlow<MapStyleState> = _mapStyle.asStateFlow()
 
+    /** Moves the location drawn during guidance ahead of the fix it came from, see its docs. */
+    private val displayLocation = DisplayLocationPredictor()
+
     /**
      * While idle, Ferrostar's state has no location; inject ours so the puck is visible before a
-     * route exists. While navigating, Ferrostar's snapped location wins.
+     * route exists. While navigating, Ferrostar's snapped location wins, moved ahead by
+     * [DisplayLocationPredictor] so that the view's one-second animation towards it ends where the
+     * user is by then rather than where they were. Idempotent per fix, so the idle flow re-running
+     * this lambda during guidance does not change the state. The idle location gets the compass as
+     * its course when the GPS has none ([withCompassHeading]), so the puck's cone and the heading
+     * camera turn with the phone while standing still; [location] itself stays untouched, because
+     * a routing origin's course becomes the request's start heading.
      */
     override val navigationUiState: StateFlow<NavigationUiState> =
-        combine(super.navigationUiState, _location) { uiState, location ->
-            if (uiState.isNavigating()) uiState else uiState.copy(location = location)
+        combine(super.navigationUiState, _location, compassHeading) { uiState, location, heading ->
+            if (uiState.isNavigating()) {
+                uiState.copy(location = uiState.location?.let(displayLocation::predict))
+            } else {
+                uiState.copy(location = location?.withCompassHeading(heading))
+            }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(),
@@ -167,6 +186,22 @@ class NavigationViewModel(
                     }
                 }
                 .collect { _location.value = it }
+        }
+
+        // The compass only matters for the idle puck and camera: registered while the screen is
+        // started with permission and no guidance running (Ferrostar draws its own puck then).
+        if (compass != null) {
+            viewModelScope.launch {
+                combine(hasLocationPermission, isInForeground, super.navigationUiState.map { it.isNavigating() }) {
+                        granted,
+                        foreground,
+                        navigating ->
+                        granted && foreground && !navigating
+                    }
+                    .distinctUntilChanged()
+                    .flatMapLatest { active -> if (active) compass.trueHeadings(_location) else flowOf(null) }
+                    .collect { compassHeading.value = it }
+            }
         }
 
         // A route preview is only as good as the options it was fetched with: re-request it when
@@ -335,6 +370,7 @@ class NavigationViewModel(
         }
 
         voiceGuidance.start()
+        displayLocation.reset()
 
         try {
             core.startNavigation(route, NavigationControllerConfigs.forProfile(current.routingProfile))
@@ -469,6 +505,7 @@ class NavigationViewModel(
                 graph.routeProvider,
                 graph.config,
                 graph.mapStyleLoader,
+                graph.compass,
             ) as T
         }
     }

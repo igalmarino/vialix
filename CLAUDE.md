@@ -81,7 +81,15 @@ detection, and rerouting all live in the Rust core. The app adds a separate `Scr
 `activeDestination` guidance is heading to, the `arrival` summary, one-shot `notice`s) for
 everything that happens *before* `startNavigation` and *after* the trip completes. `navigationUiState` is overridden to inject the app's own location into
 Ferrostar's state while idle, so the puck is visible before a route exists; once navigating,
-Ferrostar's snapped location wins. The same split shows up on the map: `RoutePreviewLayer`,
+Ferrostar's snapped location wins, but moved ahead by `DisplayLocationPredictor`
+(`navigation/DisplayLocation.kt`, pure, unit-tested): Ferrostar's map view animates the puck and the
+following camera towards each new fix over 1 s (`rememberDisplayedNavigationLocation`,
+`DISPLAY_LOCATION_ANIMATION_DURATION`), so drawn as-is the position trails the car by one to two
+seconds. The predictor shifts the fix along its course by (fix age + 1 s) × speed, deriving speed
+and course from the previous fix when the provider omits them, capped at 80 m and skipped below
+walking pace; it is idempotent per fix, because the idle location flow keeps re-running the
+`combine` during guidance. Only the UI sees the shifted location; the core keeps working on real
+fixes. The same split shows up on the map: `RoutePreviewLayer`,
 `SavedPlacesLayer` and `DroppedPinLayer` render only while `!isNavigating`, because Ferrostar draws
 the active route itself.
 Because there is no preview UI during guidance, `selectDestination` (and the map long-press
@@ -153,7 +161,15 @@ rotating top-down view centred in the visible part of the map.
 
 **Location puck.** While idle the puck is drawn by `LocationPuckLayer` in `MapLayers.kt` (accuracy
 circle, ~60° heading cone only when a course is available, 12 dp dot with a 2.5 dp white ring) from
-`NavigationUiState.location`; the view is given `showDefaultPuck = isNavigating` so Ferrostar's own
+`NavigationUiState.location`. That course is the GPS course while moving (≥ 1 m/s) and otherwise the
+**compass**: `location/CompassHeadingProvider` (rotation-vector sensor, display rotation and
+magnetic declination applied, smoothed by `HeadingSmoother`, ≤ 10 Hz, only registered while the
+screen is started with permission and no guidance running) feeds `NavigationViewModel.compassHeading`,
+and `UserLocation.withCompassHeading` (`navigation/Heading.kt`, pure, unit-tested) merges it into the
+idle location injected into `navigationUiState`. Only that injected copy carries the compass:
+`NavigationViewModel.location` (routing origin, search distances) keeps the raw fix, because
+Ferrostar's Valhalla request sends the origin's course as the start `heading`. Ferrostar's
+`TrackingCameraEffect` reads the same course, so the HEADING camera mode turns with the phone too; the view is given `showDefaultPuck = isNavigating` so Ferrostar's own
 arrow puck (Ferrostar's `NavigationMapPuckStyle`, built per theme by `navigationPuckStyle(paint)` in
 `MapLayers.kt`) takes over during guidance. Custom layers were needed
 because neither `NavigationMapPuckStyle` nor MapLibre Compose's `LocationPuck` exposes a heading
@@ -322,10 +338,19 @@ constructor, and if it is null then `NavigationUiState.isMuted` stays null and t
 hides its mute button. That is why `VoiceGuidance` lives in `AppGraph`, not the ViewModel. The TTS
 engine is bound on `selectDestination`/`startNavigation` and released in `stopNavigation`.
 
-**Location** comes from the platform `LocationManager` via Ferrostar's `AndroidLocationProvider`
-(deliberately no Google Play Services, to stay F-Droid friendly), wrapped in a
-`NavigationLocationProvider` alongside a `SimulatedLocationProvider` that the debug-only
-"Simulate driving" switch (Settings > Developer) switches on. Guidance survives backgrounding through Ferrostar's
+**Location** is chosen once at startup in `AppGraph`: `location/FusedLocationProvider.create(context)`
+returns Google Play's fused location provider (`play-services-location`, the one proprietary
+dependency; no `foss` flavor yet) when `GoogleApiAvailability` reports Play Services usable, and
+`null` otherwise, in which case the platform `LocationManager` via Ferrostar's
+`AndroidLocationProvider` is used. Both implement Ferrostar's `NavigationLocationProviding` and
+yield `android.location.Location`, so nothing downstream knows which one is active; one `Location`
+logcat line says so. The live provider is wrapped in a `NavigationLocationProvider` alongside a
+`SimulatedLocationProvider` that the debug-only "Simulate driving" switch (Settings > Developer)
+switches on. `FusedLocationProvider` is Android/GMS-bound and untested like the compass; it emits
+the last known fix first (as `AndroidLocationProvider` does, so the puck shows at once), carries
+`@SuppressLint("MissingPermission")` because the ViewModel and `startNavigation` only reach it
+after `hasLocationPermission` (Lint's `MissingPermission` is an error), and swallows a late
+`SecurityException` into `null`. Guidance survives backgrounding through Ferrostar's
 `FerrostarForegroundService`, declared in the manifest.
 
 **Domain code is kept UI-free on purpose** — the plan is to move it into a Kotlin Multiplatform

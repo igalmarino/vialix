@@ -17,6 +17,7 @@ okhttp = "5.3.2"
 desugarJdkLibs = "2.1.5"
 junit = "4.13.2"
 orgJson = "20250517"
+playServicesLocation = "21.4.0"
 
 [libraries]
 # AndroidX
@@ -39,6 +40,9 @@ ferrostar-ui-compose = { group = "com.stadiamaps.ferrostar", name = "ui-compose"
 ferrostar-ui-maplibre = { group = "com.stadiamaps.ferrostar", name = "ui-maplibre", version.ref = "ferrostar" }
 ferrostar-ui-formatters = { group = "com.stadiamaps.ferrostar", name = "ui-formatters", version.ref = "ferrostar" }
 maplibre-compose = { group = "org.maplibre.compose", name = "maplibre-compose-android", version.ref = "maplibreCompose" }
+
+# Google Play Services: optional at runtime (see location/FusedLocationProvider), the one non-FOSS dependency
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 # Networking
 okhttp-bom = { group = "com.squareup.okhttp3", name = "okhttp-bom", version.ref = "okhttp" }
