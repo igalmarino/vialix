@@ -6,10 +6,10 @@
 [versions]
 agp = "9.0.1"
 kotlin = "2.3.20"
-composeBom = "2026.02.01"
+composeBom = "2026.08.00"
 activityCompose = "1.13.0"
 lifecycle = "2.10.0"
-coreKtx = "1.17.0"
+coreKtx = "1.19.0"
 coroutines = "1.11.0"
 ferrostar = "0.54.0"
 maplibreCompose = "0.13.0"
