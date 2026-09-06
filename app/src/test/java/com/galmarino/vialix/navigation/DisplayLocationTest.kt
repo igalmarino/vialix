@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.navigation
 
 import java.time.Instant
@@ -14,18 +17,14 @@ class DisplayLocationTest {
     private val now = 1_700_000_000_000L
     private val origin = GeographicCoordinate(lat = 48.8566, lng = 2.3522)
 
-    private fun fix(
-        coordinate: GeographicCoordinate = origin,
-        speedMps: Double? = 20.0,
-        courseDegrees: Int? = 90,
-        ageMillis: Long = 500,
-    ) = UserLocation(
-        coordinates = coordinate,
-        horizontalAccuracy = 5.0,
-        courseOverGround = courseDegrees?.let { CourseOverGround(it.toUShort(), null) },
-        timestamp = Instant.ofEpochMilli(now - ageMillis),
-        speed = speedMps?.let { Speed(it, null) },
-    )
+    private fun fix(coordinate: GeographicCoordinate = origin, speedMps: Double? = 20.0, courseDegrees: Int? = 90, ageMillis: Long = 500) =
+        UserLocation(
+            coordinates = coordinate,
+            horizontalAccuracy = 5.0,
+            courseOverGround = courseDegrees?.let { CourseOverGround(it.toUShort(), null) },
+            timestamp = Instant.ofEpochMilli(now - ageMillis),
+            speed = speedMps?.let { Speed(it, null) },
+        )
 
     private fun shift(from: UserLocation, to: UserLocation) = distanceMeters(from.coordinates, to.coordinates)
 

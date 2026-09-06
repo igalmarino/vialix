@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.places
 
 import com.galmarino.vialix.navigation.Destination
@@ -10,23 +13,17 @@ enum class FavoriteKind { HOME, WORK }
  * destinations, newest first. A plain value so the bookkeeping (dedupe, cap) is testable without
  * Android; [SavedPlacesRepository] persists it.
  */
-data class SavedPlaces(
-    val home: Destination? = null,
-    val work: Destination? = null,
-    val recents: List<Destination> = emptyList(),
-) {
-    fun favorite(kind: FavoriteKind): Destination? =
-        when (kind) {
-            FavoriteKind.HOME -> home
-            FavoriteKind.WORK -> work
-        }
+data class SavedPlaces(val home: Destination? = null, val work: Destination? = null, val recents: List<Destination> = emptyList()) {
+    fun favorite(kind: FavoriteKind): Destination? = when (kind) {
+        FavoriteKind.HOME -> home
+        FavoriteKind.WORK -> work
+    }
 
     /** `null` clears the shortcut. */
-    fun withFavorite(kind: FavoriteKind, destination: Destination?): SavedPlaces =
-        when (kind) {
-            FavoriteKind.HOME -> copy(home = destination)
-            FavoriteKind.WORK -> copy(work = destination)
-        }
+    fun withFavorite(kind: FavoriteKind, destination: Destination?): SavedPlaces = when (kind) {
+        FavoriteKind.HOME -> copy(home = destination)
+        FavoriteKind.WORK -> copy(work = destination)
+    }
 
     /**
      * Moves [destination] to the front of the recents, dropping any earlier entry for the same
@@ -38,8 +35,7 @@ data class SavedPlaces(
     }
 
     /** Drops the recent at [destination]'s coordinate; a no-op when there is none. */
-    fun withoutRecent(destination: Destination): SavedPlaces =
-        copy(recents = recents.filterNot { it.coordinate == destination.coordinate })
+    fun withoutRecent(destination: Destination): SavedPlaces = copy(recents = recents.filterNot { it.coordinate == destination.coordinate })
 
     fun withoutRecents(): SavedPlaces = copy(recents = emptyList())
 

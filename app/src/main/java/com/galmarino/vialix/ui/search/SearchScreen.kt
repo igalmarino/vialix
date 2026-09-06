@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui.search
 
 import androidx.activity.compose.BackHandler
@@ -104,10 +107,16 @@ fun SearchScreen(
     onRemoveRecent: (Destination) -> Unit,
     onClearRecents: () -> Unit,
 ) {
-    BackHandler(onBack = onBack)
-
     val state by viewModel.state.collectAsStateWithLifecycle()
     val keyboard = LocalSoftwareKeyboardController.current
+
+    // The screen fades out over the map; the focused field would keep the keyboard up meanwhile.
+    fun back() {
+        keyboard?.hide()
+        onBack()
+    }
+
+    BackHandler(onBack = ::back)
     val focusRequester = remember { FocusRequester() }
 
     // The field value (text + cursor) stays local; only the text goes to the ViewModel. Round-
@@ -180,7 +189,7 @@ fun SearchScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = ::back) {
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_back),
                             contentDescription = stringResource(R.string.back),
@@ -208,9 +217,12 @@ fun SearchScreen(
                         onRecentLongClick = { recentToManage = it },
                         onClearRecents = { confirmClearRecents = true },
                     )
+
                 error != null -> StatusLine(errorText(error), retry = viewModel::submit)
+
                 state.searchedQuery != null && state.results.isEmpty() && !state.isSearching ->
                     StatusLine(stringResource(R.string.search_no_results, state.searchedQuery.orEmpty()))
+
                 else ->
                     // Previous results stay visible while a new request is in flight, so the list
                     // does not flicker on every keystroke.
@@ -351,7 +363,6 @@ private fun StatusLine(text: String, retry: (() -> Unit)? = null) {
 }
 
 @Composable
-private fun errorText(error: SearchError): String =
-    when (error) {
-        is SearchError.RequestFailed -> failureText(error.failure, R.string.search_server_error, R.string.search_error)
-    }
+private fun errorText(error: SearchError): String = when (error) {
+    is SearchError.RequestFailed -> failureText(error.failure, R.string.search_server_error, R.string.search_error)
+}

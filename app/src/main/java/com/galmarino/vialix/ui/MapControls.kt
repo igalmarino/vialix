@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui
 
 import androidx.compose.foundation.layout.Arrangement
@@ -20,23 +23,21 @@ import com.galmarino.vialix.navigation.CameraFollowMode
 import com.stadiamaps.ferrostar.maplibreui.runtime.NavigationCameraMode
 
 /** The Ferrostar camera mode that realises a [CameraFollowMode] while browsing. */
-fun CameraFollowMode.toCameraMode(): NavigationCameraMode =
-    when (this) {
-        CameraFollowMode.FREE -> NavigationCameraMode.FREE
-        CameraFollowMode.FOLLOW -> NavigationCameraMode.FOLLOW_USER
-        CameraFollowMode.HEADING -> NavigationCameraMode.FOLLOW_USER_WITH_BEARING
-    }
+fun CameraFollowMode.toCameraMode(): NavigationCameraMode = when (this) {
+    CameraFollowMode.FREE -> NavigationCameraMode.FREE
+    CameraFollowMode.FOLLOW -> NavigationCameraMode.FOLLOW_USER
+    CameraFollowMode.HEADING -> NavigationCameraMode.FOLLOW_USER_WITH_BEARING
+}
 
 /**
  * What the button shows for the camera's current mode. Ferrostar switches to `FREE` itself on any
  * gesture and to `OVERVIEW` when framing a route; both mean "not following" to the user.
  */
-fun NavigationCameraMode.toFollowMode(): CameraFollowMode =
-    when (this) {
-        NavigationCameraMode.FOLLOW_USER -> CameraFollowMode.FOLLOW
-        NavigationCameraMode.FOLLOW_USER_WITH_BEARING -> CameraFollowMode.HEADING
-        NavigationCameraMode.OVERVIEW, NavigationCameraMode.FREE -> CameraFollowMode.FREE
-    }
+fun NavigationCameraMode.toFollowMode(): CameraFollowMode = when (this) {
+    NavigationCameraMode.FOLLOW_USER -> CameraFollowMode.FOLLOW
+    NavigationCameraMode.FOLLOW_USER_WITH_BEARING -> CameraFollowMode.HEADING
+    NavigationCameraMode.OVERVIEW, NavigationCameraMode.FREE -> CameraFollowMode.FREE
+}
 
 /**
  * The round buttons at the bottom-right of the map, currently just my-location (56 dp); a layers
@@ -44,11 +45,7 @@ fun NavigationCameraMode.toFollowMode(): CameraFollowMode =
  * the top edge of the bottom sheet.
  */
 @Composable
-fun MapFabStack(
-    followMode: CameraFollowMode,
-    onMyLocationClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun MapFabStack(followMode: CameraFollowMode, onMyLocationClick: () -> Unit, modifier: Modifier = Modifier) {
     val chrome = mapChrome()
     Column(modifier = modifier, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MapControlButton(
@@ -66,7 +63,7 @@ fun MapFabStack(
                         CameraFollowMode.FREE -> R.string.my_location_free
                         CameraFollowMode.FOLLOW -> R.string.my_location_follow
                         CameraFollowMode.HEADING -> R.string.my_location_heading
-                    }
+                    },
                 ),
             // The chrome accent, not the theme's primary: on the theme-independent disc the
             // latter can be light-on-light in dark mode, and this way the button matches the puck.

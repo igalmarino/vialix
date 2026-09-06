@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.location
 
 import android.annotation.SuppressLint
@@ -29,20 +32,18 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * Callers only reach this after the location permission is granted (the ViewModel gates its
  * collection on it and Ferrostar calls [lastLocation] from `startNavigation`, gated the same way),
  * hence the `MissingPermission` suppressions; a permission revoked while the process lives
- * surfaces as a `SecurityException`, which [lastLocation] turns into `null`.
+ * surfaces as a `SecurityException`, which [lastLocation] turns into `null` and [locationUpdates]
+ * into the end of the flow.
  */
-class FusedLocationProvider private constructor(
-    private val client: FusedLocationProviderClient,
-) : NavigationLocationProviding {
+class FusedLocationProvider private constructor(private val client: FusedLocationProviderClient) : NavigationLocationProviding {
 
     @SuppressLint("MissingPermission")
-    override suspend fun lastLocation(): Location? =
-        try {
-            client.lastLocation.awaitOrNull()
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Location permission missing", e)
-            null
-        }
+    override suspend fun lastLocation(): Location? = try {
+        client.lastLocation.awaitOrNull()
+    } catch (e: SecurityException) {
+        Log.w(TAG, "Location permission missing", e)
+        null
+    }
 
     @SuppressLint("MissingPermission")
     override fun locationUpdates(intervalMillis: Long): Flow<Location> = callbackFlow {
@@ -54,7 +55,13 @@ class FusedLocationProvider private constructor(
                     result.locations.forEach { trySend(it) }
                 }
             }
-        client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+        try {
+            client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Location permission missing", e)
+            close()
+            return@callbackFlow
+        }
         awaitClose { client.removeLocationUpdates(callback) }
     }
 
@@ -75,9 +82,8 @@ class FusedLocationProvider private constructor(
 }
 
 /** Suspends until [this] settles; failure and cancellation both read as "no result". */
-private suspend fun <T> Task<T>.awaitOrNull(): T? =
-    suspendCancellableCoroutine { continuation ->
-        addOnSuccessListener { continuation.resume(it) }
-        addOnFailureListener { continuation.resume(null) }
-        addOnCanceledListener { continuation.resume(null) }
-    }
+private suspend fun <T> Task<T>.awaitOrNull(): T? = suspendCancellableCoroutine { continuation ->
+    addOnSuccessListener { continuation.resume(it) }
+    addOnFailureListener { continuation.resume(null) }
+    addOnCanceledListener { continuation.resume(null) }
+}

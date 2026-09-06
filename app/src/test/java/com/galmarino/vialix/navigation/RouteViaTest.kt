@@ -1,42 +1,18 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.navigation
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
-import uniffi.ferrostar.BoundingBox
-import uniffi.ferrostar.DrivingSide
-import uniffi.ferrostar.GeographicCoordinate
-import uniffi.ferrostar.Route
 import uniffi.ferrostar.RouteStep
 
 class RouteViaTest {
 
-    private fun step(distance: Double, roadName: String?) =
-        RouteStep(
-            geometry = emptyList(),
-            distance = distance,
-            duration = distance / 10,
-            roadName = roadName,
-            exits = emptyList(),
-            instruction = "Continue",
-            visualInstructions = emptyList(),
-            spokenInstructions = emptyList(),
-            annotations = null,
-            incidents = emptyList(),
-            drivingSide = DrivingSide.RIGHT,
-            roundaboutExitNumber = null,
-        )
+    private fun step(distance: Double, roadName: String?) = testStep(distance, roadName)
 
-    private fun route(vararg steps: RouteStep): Route {
-        val origin = GeographicCoordinate(lat = 0.0, lng = 0.0)
-        return Route(
-            geometry = listOf(origin),
-            bbox = BoundingBox(sw = origin, ne = origin),
-            distance = steps.sumOf { it.distance },
-            waypoints = emptyList(),
-            steps = steps.toList(),
-        )
-    }
+    private fun route(vararg steps: RouteStep) = testRoute(*steps)
 
     @Test
     fun `the longest named step names the route`() {

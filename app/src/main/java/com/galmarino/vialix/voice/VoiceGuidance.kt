@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.voice
 
 import android.content.Context
@@ -13,6 +16,8 @@ import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import uniffi.ferrostar.SpokenInstruction
 
@@ -34,11 +39,7 @@ import uniffi.ferrostar.SpokenInstruction
  * The observer must be attached to `FerrostarCore` *before* the navigation ViewModel is built —
  * see [com.galmarino.vialix.AppGraph].
  */
-class VoiceGuidance(
-    context: Context,
-    private val settings: StateFlow<Settings>,
-    scope: CoroutineScope,
-) {
+class VoiceGuidance(context: Context, private val settings: StateFlow<Settings>, scope: CoroutineScope) {
 
     private val appContext: Context = context.applicationContext
 
@@ -51,10 +52,15 @@ class VoiceGuidance(
     init {
         observer.statusObserver = StatusListener()
         scope.launch {
-            settings.collect { current ->
-                observer.setMuted(!current.voiceEnabled)
-                applyLanguage(current)
-            }
+            // Only the two settings that matter here: every other change (theme, units, ...) would
+            // otherwise cost a main-thread round trip to the TTS engine.
+            settings
+                .map { it.voiceEnabled to it.resolvedLanguageTag() }
+                .distinctUntilChanged()
+                .collect { (voiceEnabled, languageTag) ->
+                    observer.setMuted(!voiceEnabled)
+                    applyLanguage(languageTag)
+                }
         }
     }
 
@@ -72,7 +78,7 @@ class VoiceGuidance(
         observer.shutdown()
     }
 
-    private var announcementStartedAt: Long? = null
+    private val announcementTimer = AnnouncementTimer(ANNOUNCEMENT_MS)
 
     /**
      * Says "Rerouting" in the guidance language, queued behind whatever is being spoken. The
@@ -83,7 +89,7 @@ class VoiceGuidance(
     fun announceRerouting() {
         if (observer.isMuted) return
         val text = guidanceResources().getString(R.string.rerouting_announcement)
-        announcementStartedAt = SystemClock.elapsedRealtime()
+        announcementTimer.started(SystemClock.elapsedRealtime())
         observer.onSpokenInstructionTrigger(
             SpokenInstruction(text = text, ssml = null, triggerDistanceBeforeManeuver = 0.0, utteranceId = UUID.randomUUID()),
         )
@@ -94,27 +100,26 @@ class VoiceGuidance(
      * stops speech and clears the queue, so the reroute processor waits this long before swapping
      * the route in, or the word is cut off whenever the server answers within a second.
      */
-    fun remainingAnnouncementMs(): Long {
-        val started = announcementStartedAt ?: return 0
-        return (started + ANNOUNCEMENT_MS - SystemClock.elapsedRealtime()).coerceAtLeast(0)
-    }
+    fun remainingAnnouncementMs(): Long = announcementTimer.remainingMs(SystemClock.elapsedRealtime())
 
     /** The app's strings in the guidance language rather than the interface language. */
-    private fun guidanceResources() =
-        appContext.createConfigurationContext(
-            Configuration(appContext.resources.configuration).apply {
-                setLocale(Locale.forLanguageTag(settings.value.resolvedLanguageTag()))
-            },
-        ).resources
+    private fun guidanceResources() = appContext.createConfigurationContext(
+        Configuration(appContext.resources.configuration).apply {
+            setLocale(Locale.forLanguageTag(settings.value.resolvedLanguageTag()))
+        },
+    ).resources
 
     /**
      * Points the bound engine at the guidance language, so the voice matches the language the
      * instruction text was rendered in. A no-op until the engine is up; anything the engine cannot
      * speak is left alone, so it keeps its own default.
      */
-    private fun applyLanguage(current: Settings = settings.value) {
+    private fun applyLanguage(languageTag: String = settings.value.resolvedLanguageTag()) {
+        // `tts` is assigned before the engine has called back; asking it anything before then only
+        // logs a spurious failure. `onTtsInitialized` below applies the language once it is up.
+        if (!observer.isInitializedSuccessfully) return
         val tts = observer.tts ?: return
-        val locale = Locale.forLanguageTag(current.resolvedLanguageTag())
+        val locale = Locale.forLanguageTag(languageTag)
         if (tts.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE) {
             tts.setLanguage(locale)
         } else {

@@ -1,7 +1,8 @@
 # Copy to local.properties (git-ignored). Every key is optional.
 
-# Android SDK location (Android Studio writes this for you).
-sdk.dir=/opt/android-sdk
+# Android SDK location. Leave it out if ANDROID_HOME is exported (the dev container exports
+# /opt/android-sdk); Android Studio writes it for you otherwise.
+#sdk.dir=/path/to/Android/Sdk
 
 # Routing server. Any Valhalla-compatible endpoint works, e.g.
 #   https://valhalla1.openstreetmap.de/route              (FOSSGIS demo server, default)

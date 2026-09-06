@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Lint suggests mipmap-anydpi, but AAPT2 does not resolve the manifest's android:icon from an
+         anydpi folder without the v26 qualifier (resource linking fails), so the folder stays. -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>

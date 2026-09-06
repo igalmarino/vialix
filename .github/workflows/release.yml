@@ -1,0 +1,58 @@
+name: Release
+
+# Pushing a tag such as v0.2.0 builds the signed release APK and attaches it, with the R8 mapping
+# file, to a GitHub release of the same name. Signing needs four repository secrets:
+# VIALIX_KEYSTORE_BASE64 (the .jks, base64-encoded), VIALIX_STORE_PASSWORD, VIALIX_KEY_ALIAS,
+# VIALIX_KEY_PASSWORD. Without them the APK is built unsigned and the step says so.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-36 build-tools;36.0.0 platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode the signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.VIALIX_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::No VIALIX_KEYSTORE_BASE64 secret; the release APK will be unsigned."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Tests, lint, release build
+        env:
+          VIALIX_STORE_FILE: ${{ runner.temp }}/release.jks
+          VIALIX_STORE_PASSWORD: ${{ secrets.VIALIX_STORE_PASSWORD }}
+          VIALIX_KEY_ALIAS: ${{ secrets.VIALIX_KEY_ALIAS }}
+          VIALIX_KEY_PASSWORD: ${{ secrets.VIALIX_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon testFullDebugUnitTest lintFullDebug lintFossDebug assembleFullRelease assembleFossRelease
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/mapping/fullRelease/mapping.txt mapping-full.txt
+          cp app/build/outputs/mapping/fossRelease/mapping.txt mapping-foss.txt
+          gh release create "$GITHUB_REF_NAME" \
+            app/build/outputs/apk/full/release/*.apk \
+            app/build/outputs/apk/foss/release/*.apk \
+            mapping-full.txt mapping-foss.txt \
+            --title "$GITHUB_REF_NAME" --generate-notes

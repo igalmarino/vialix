@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui.settings
 
 import androidx.activity.compose.BackHandler
@@ -7,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -26,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.galmarino.vialix.R
@@ -79,13 +84,15 @@ fun SettingsScreen(settings: NavSettings, showDeveloperOptions: Boolean, onBack:
             ListItem(
                 headlineContent = { Text(stringResource(R.string.setting_voice_language)) },
                 supportingContent = { Text(languageLabel(state.languageTag)) },
-                modifier = Modifier.clickable { picker = Picker.Language },
+                modifier = Modifier.clickable(role = Role.Button) { picker = Picker.Language },
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.setting_voice_guidance)) },
                 supportingContent = { Text(stringResource(R.string.setting_voice_guidance_summary)) },
-                trailingContent = { Switch(checked = state.voiceEnabled, onCheckedChange = settings::setVoiceEnabled) },
-                modifier = Modifier.clickable { settings.setVoiceEnabled(!state.voiceEnabled) },
+                // The row is the switch (Material's pattern): one focusable control for TalkBack,
+                // announced with its state, rather than a clickable row plus a nested switch.
+                trailingContent = { Switch(checked = state.voiceEnabled, onCheckedChange = null) },
+                modifier = Modifier.toggleable(value = state.voiceEnabled, role = Role.Switch, onValueChange = settings::setVoiceEnabled),
             )
 
             HorizontalDivider()
@@ -94,12 +101,12 @@ fun SettingsScreen(settings: NavSettings, showDeveloperOptions: Boolean, onBack:
             ListItem(
                 headlineContent = { Text(stringResource(R.string.setting_routing_profile)) },
                 supportingContent = { Text(profileLabel(state.routingProfile)) },
-                modifier = Modifier.clickable { picker = Picker.Profile },
+                modifier = Modifier.clickable(role = Role.Button) { picker = Picker.Profile },
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.setting_units)) },
                 supportingContent = { Text(stringResource(state.units.labelRes())) },
-                modifier = Modifier.clickable { picker = Picker.Units },
+                modifier = Modifier.clickable(role = Role.Button) { picker = Picker.Units },
             )
 
             HorizontalDivider()
@@ -108,12 +115,12 @@ fun SettingsScreen(settings: NavSettings, showDeveloperOptions: Boolean, onBack:
             ListItem(
                 headlineContent = { Text(stringResource(R.string.setting_theme)) },
                 supportingContent = { Text(stringResource(state.themeMode.labelRes())) },
-                modifier = Modifier.clickable { picker = Picker.Theme },
+                modifier = Modifier.clickable(role = Role.Button) { picker = Picker.Theme },
             )
             ListItem(
                 headlineContent = { Text(stringResource(R.string.setting_app_language)) },
                 supportingContent = { Text(uiLanguageLabel(state.uiLanguageTag)) },
-                modifier = Modifier.clickable { picker = Picker.AppLanguage },
+                modifier = Modifier.clickable(role = Role.Button) { picker = Picker.AppLanguage },
             )
 
             if (showDeveloperOptions) {
@@ -123,10 +130,13 @@ fun SettingsScreen(settings: NavSettings, showDeveloperOptions: Boolean, onBack:
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.simulate_driving)) },
                     supportingContent = { Text(stringResource(R.string.simulate_driving_summary)) },
-                    trailingContent = {
-                        Switch(checked = state.simulateDriving, onCheckedChange = settings::setSimulateDriving)
-                    },
-                    modifier = Modifier.clickable { settings.setSimulateDriving(!state.simulateDriving) },
+                    trailingContent = { Switch(checked = state.simulateDriving, onCheckedChange = null) },
+                    modifier =
+                        Modifier.toggleable(
+                            value = state.simulateDriving,
+                            role = Role.Switch,
+                            onValueChange = settings::setSimulateDriving,
+                        ),
                 )
             }
         }
@@ -138,33 +148,49 @@ fun SettingsScreen(settings: NavSettings, showDeveloperOptions: Boolean, onBack:
                 title = stringResource(R.string.setting_voice_language),
                 choices = languageChoices(),
                 selected = state.languageTag,
-                onSelect = { settings.setLanguageTag(it); picker = null },
+                onSelect = {
+                    settings.setLanguageTag(it)
+                    picker = null
+                },
                 onDismiss = { picker = null },
             )
+
         Picker.Profile ->
             ChoiceDialog(
                 title = stringResource(R.string.setting_routing_profile),
                 choices = ROUTING_PROFILES.map { Choice(it.costing, stringResource(it.labelRes)) },
                 selected = state.routingProfile,
-                onSelect = { settings.setRoutingProfile(it); picker = null },
+                onSelect = {
+                    settings.setRoutingProfile(it)
+                    picker = null
+                },
                 onDismiss = { picker = null },
             )
+
         Picker.Units ->
             ChoiceDialog(
                 title = stringResource(R.string.setting_units),
                 choices = DistanceUnits.entries.map { Choice(it, stringResource(it.labelRes())) },
                 selected = state.units,
-                onSelect = { settings.setUnits(it); picker = null },
+                onSelect = {
+                    settings.setUnits(it)
+                    picker = null
+                },
                 onDismiss = { picker = null },
             )
+
         Picker.Theme ->
             ChoiceDialog(
                 title = stringResource(R.string.setting_theme),
                 choices = ThemeMode.entries.map { Choice(it, stringResource(it.labelRes())) },
                 selected = state.themeMode,
-                onSelect = { settings.setThemeMode(it); picker = null },
+                onSelect = {
+                    settings.setThemeMode(it)
+                    picker = null
+                },
                 onDismiss = { picker = null },
             )
+
         Picker.AppLanguage ->
             ChoiceDialog(
                 title = stringResource(R.string.setting_app_language),
@@ -178,6 +204,7 @@ fun SettingsScreen(settings: NavSettings, showDeveloperOptions: Boolean, onBack:
                 },
                 onDismiss = { picker = null },
             )
+
         null -> Unit
     }
 }
@@ -190,33 +217,29 @@ private fun SectionHeader(text: String) {
 
 /** "System default (Español (España))" for `null`, otherwise the language named in itself. */
 @Composable
-private fun languageLabel(tag: String?): String =
-    if (tag == null) {
-        stringResource(R.string.language_system_default, languageDisplayName(SpokenLanguage.valhallaTag()))
-    } else {
-        languageDisplayName(tag)
-    }
+private fun languageLabel(tag: String?): String = if (tag == null) {
+    stringResource(R.string.language_system_default, languageDisplayName(SpokenLanguage.valhallaTag()))
+} else {
+    languageDisplayName(tag)
+}
 
 /** The system-default entry first, then every supported language sorted by its own name. */
 @Composable
-private fun languageChoices(): List<Choice<String?>> =
-    listOf(Choice<String?>(null, languageLabel(null))) +
-        SpokenLanguage.SUPPORTED_TAGS.map { Choice<String?>(it, languageDisplayName(it)) }.sortedBy { it.label }
+private fun languageChoices(): List<Choice<String?>> = listOf(Choice<String?>(null, languageLabel(null))) +
+    SpokenLanguage.SUPPORTED_TAGS.map { Choice<String?>(it, languageDisplayName(it)) }.sortedBy { it.label }
 
 /** "System default (English)" for `null` — naming the translation the device language gets — else the language in itself. */
 @Composable
-private fun uiLanguageLabel(tag: String?): String =
-    if (tag == null) {
-        val context = LocalContext.current
-        stringResource(R.string.language_system_default, languageDisplayName(UiLanguage.resolve(systemLocale(context))))
-    } else {
-        languageDisplayName(tag)
-    }
+private fun uiLanguageLabel(tag: String?): String = if (tag == null) {
+    val context = LocalContext.current
+    stringResource(R.string.language_system_default, languageDisplayName(UiLanguage.resolve(systemLocale(context))))
+} else {
+    languageDisplayName(tag)
+}
 
 @Composable
-private fun uiLanguageChoices(): List<Choice<String?>> =
-    listOf(Choice<String?>(null, uiLanguageLabel(null))) +
-        UiLanguage.SUPPORTED_TAGS.map { Choice<String?>(it, languageDisplayName(it)) }.sortedBy { it.label }
+private fun uiLanguageChoices(): List<Choice<String?>> = listOf(Choice<String?>(null, uiLanguageLabel(null))) +
+    UiLanguage.SUPPORTED_TAGS.map { Choice<String?>(it, languageDisplayName(it)) }.sortedBy { it.label }
 
 /** Each language named in itself ("Español (España)"), so a user can find theirs whatever the UI language. */
 internal fun languageDisplayName(tag: String): String {
@@ -228,15 +251,13 @@ internal fun languageDisplayName(tag: String): String {
 private fun profileLabel(costing: String): String =
     ROUTING_PROFILES.firstOrNull { it.costing == costing }?.let { stringResource(it.labelRes) } ?: costing
 
-private fun ThemeMode.labelRes(): Int =
-    when (this) {
-        ThemeMode.SYSTEM -> R.string.theme_system
-        ThemeMode.LIGHT -> R.string.theme_light
-        ThemeMode.DARK -> R.string.theme_dark
-    }
+private fun ThemeMode.labelRes(): Int = when (this) {
+    ThemeMode.SYSTEM -> R.string.theme_system
+    ThemeMode.LIGHT -> R.string.theme_light
+    ThemeMode.DARK -> R.string.theme_dark
+}
 
-private fun DistanceUnits.labelRes(): Int =
-    when (this) {
-        DistanceUnits.METRIC -> R.string.units_metric
-        DistanceUnits.IMPERIAL -> R.string.units_imperial
-    }
+private fun DistanceUnits.labelRes(): Int = when (this) {
+    DistanceUnits.METRIC -> R.string.units_metric
+    DistanceUnits.IMPERIAL -> R.string.units_imperial
+}

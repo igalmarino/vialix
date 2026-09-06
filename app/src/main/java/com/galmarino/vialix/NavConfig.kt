@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix
 
 /**
@@ -55,24 +58,25 @@ data class NavConfig(
         /** Public Valhalla instance run by FOSSGIS e.V. Fair use: ~1 request/second per user. */
         const val DEFAULT_VALHALLA_ENDPOINT = "https://valhalla1.openstreetmap.de/route"
         const val DEFAULT_ROUTING_PROFILE = "auto"
+
         /** OpenFreeMap "liberty" style: OpenStreetMap data, free, no API key. */
         const val DEFAULT_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
         const val DEFAULT_CLIENT_ID = "com.galmarino.vialix"
         const val DEFAULT_VOICE_GUIDANCE = true
+
         /** Public Photon instance run by komoot. Fair use only; no SLA. */
         const val DEFAULT_GEOCODER_ENDPOINT = "https://photon.komoot.io/api"
 
         /** Builds the config from generated `BuildConfig` fields, applying defaults for blanks. */
-        fun fromBuildConfig(): NavConfig =
-            fromValues(
-                valhallaEndpoint = BuildConfig.VALHALLA_ENDPOINT,
-                routingProfile = BuildConfig.ROUTING_PROFILE,
-                mapStyleUrl = BuildConfig.MAP_STYLE_URL,
-                mapStyleUrlDark = BuildConfig.MAP_STYLE_URL_DARK,
-                clientId = BuildConfig.CLIENT_ID,
-                voiceGuidance = BuildConfig.VOICE_GUIDANCE,
-                geocoderEndpoint = BuildConfig.GEOCODER_ENDPOINT,
-            )
+        fun fromBuildConfig(): NavConfig = fromValues(
+            valhallaEndpoint = BuildConfig.VALHALLA_ENDPOINT,
+            routingProfile = BuildConfig.ROUTING_PROFILE,
+            mapStyleUrl = BuildConfig.MAP_STYLE_URL,
+            mapStyleUrlDark = BuildConfig.MAP_STYLE_URL_DARK,
+            clientId = BuildConfig.CLIENT_ID,
+            voiceGuidance = BuildConfig.VOICE_GUIDANCE,
+            geocoderEndpoint = BuildConfig.GEOCODER_ENDPOINT,
+        )
 
         /**
          * Same as [fromBuildConfig] but testable: blank strings fall back to the defaults (a blank
@@ -86,26 +90,23 @@ data class NavConfig(
             clientId: String?,
             voiceGuidance: String?,
             geocoderEndpoint: String?,
-        ): NavConfig =
-            NavConfig(
-                valhallaEndpoint = valhallaEndpoint.orDefault(DEFAULT_VALHALLA_ENDPOINT),
-                routingProfile = routingProfile.orDefault(DEFAULT_ROUTING_PROFILE),
-                mapStyleUrl = mapStyleUrl.orDefault(DEFAULT_MAP_STYLE_URL),
-                mapStyleUrlDark = mapStyleUrlDark.orNull(),
-                clientId = clientId.orDefault(DEFAULT_CLIENT_ID),
-                voiceGuidance = voiceGuidance.orDefault(DEFAULT_VOICE_GUIDANCE),
-                geocoderEndpoint = geocoderEndpoint.orDefault(DEFAULT_GEOCODER_ENDPOINT),
-            )
+        ): NavConfig = NavConfig(
+            valhallaEndpoint = valhallaEndpoint.orDefault(DEFAULT_VALHALLA_ENDPOINT),
+            routingProfile = routingProfile.orDefault(DEFAULT_ROUTING_PROFILE),
+            mapStyleUrl = mapStyleUrl.orDefault(DEFAULT_MAP_STYLE_URL),
+            mapStyleUrlDark = mapStyleUrlDark.orNull(),
+            clientId = clientId.orDefault(DEFAULT_CLIENT_ID),
+            voiceGuidance = voiceGuidance.orDefault(DEFAULT_VOICE_GUIDANCE),
+            geocoderEndpoint = geocoderEndpoint.orDefault(DEFAULT_GEOCODER_ENDPOINT),
+        )
 
-        private fun String.isStyleUrl(): Boolean =
-            startsWith("https://") || startsWith("http://") || startsWith("asset://")
+        private fun String.isStyleUrl(): Boolean = startsWith("https://") || startsWith("http://") || startsWith("asset://")
 
         private fun String?.orDefault(default: String): String = orNull() ?: default
 
         private fun String?.orNull(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 
         /** Anything that is not recognisably `true`/`false` falls back rather than failing a build. */
-        private fun String?.orDefault(default: Boolean): Boolean =
-            this?.trim()?.lowercase()?.toBooleanStrictOrNull() ?: default
+        private fun String?.orDefault(default: Boolean): Boolean = this?.trim()?.lowercase()?.toBooleanStrictOrNull() ?: default
     }
 }

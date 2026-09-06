@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nothing leaves the device, in a cloud backup or a device-to-device transfer: the recents are a
+     location history, and the settings take a moment to redo. Complements allowBackup="false",
+     which Android 12+ no longer honours on its own. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

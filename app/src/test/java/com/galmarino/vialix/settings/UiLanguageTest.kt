@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.settings
 
 import java.io.File
@@ -32,9 +35,11 @@ class UiLanguageTest {
     /** The list and the resource folders must agree: the OS picker (generateLocaleConfig) follows the folders. */
     @Test
     fun `every offered language ships a translation`() {
-        // Gradle runs unit tests with the module directory as the working directory.
-        val res = File("src/main/res")
-        assertTrue("run from the app module: ${res.absolutePath}", res.isDirectory)
+        // Gradle runs unit tests with the module directory as the working directory; an IDE run
+        // from the repository root is accepted too.
+        val res = listOf(File("src/main/res"), File("app/src/main/res")).firstOrNull { it.isDirectory }
+        assertTrue("run from the app module or the repository root", res != null)
+        res!!
         for (tag in UiLanguage.SUPPORTED_TAGS - UiLanguage.DEFAULT_TAG) {
             assertTrue("missing translation for $tag", File(res, "values-$tag/strings.xml").isFile)
         }

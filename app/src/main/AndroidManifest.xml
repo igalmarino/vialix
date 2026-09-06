@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Coarse is declared because Android 12+ requires it next to fine, but turn-by-turn guidance
+         needs the precise fix: the app treats "Approximate" as denied (see NavigationScreen). -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
@@ -14,6 +16,9 @@
          while it stands still; without the sensors only the GPS course is shown. -->
     <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
+    <!-- Implied by ACCESS_FINE_LOCATION otherwise, which would hide the app from GPS-less devices
+         (tablets on Wi-Fi location) that can still browse and preview routes. -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <!-- Package visibility: to bind a text-to-speech engine for spoken guidance, and to find a
          speech recogniser for voice search (the mic button is hidden when there is none). -->
@@ -29,6 +34,8 @@
     <application
         android:name=".NavApplication"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
@@ -38,10 +45,24 @@
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- "Directions" buttons and geo: links from other apps (singleTask: they land in the
+                 running instance through onNewIntent rather than stacking a second map). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="google.navigation" />
             </intent-filter>
         </activity>
 

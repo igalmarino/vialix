@@ -1,3 +1,9 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Named after the topic (the chrome over the map), not the one class in it.
+@file:Suppress("ktlint:standard:filename")
+
 package com.galmarino.vialix.ui
 
 import androidx.compose.foundation.BorderStroke
@@ -14,13 +20,7 @@ import com.galmarino.vialix.ui.theme.LocationBlueDark
  * Material colour scheme because the chrome has to read against the tiles, which are never
  * wallpaper-tinted. [accent] marks an active control and matches the location puck.
  */
-internal data class MapChromeColors(
-    val surface: Color,
-    val content: Color,
-    val hint: Color,
-    val outline: Color,
-    val accent: Color,
-) {
+internal data class MapChromeColors(val surface: Color, val content: Color, val hint: Color, val outline: Color, val accent: Color) {
     val outlineStroke: BorderStroke
         get() = BorderStroke(0.5.dp, outline)
 }

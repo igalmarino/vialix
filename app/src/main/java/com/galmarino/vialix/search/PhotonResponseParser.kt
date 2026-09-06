@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.search
 
 import org.json.JSONObject
@@ -38,14 +41,13 @@ internal object PhotonResponseParser {
         return Place(name, formatAddress(props, name), GeographicCoordinate(lat = lat, lng = lng))
     }
 
-    private fun displayName(props: JSONObject): String? =
-        props.text("name")
-            ?: streetLine(props)
-            ?: props.text("city")
-            ?: props.text("district")
-            ?: props.text("county")
-            ?: props.text("state")
-            ?: props.text("country")
+    private fun displayName(props: JSONObject): String? = props.text("name")
+        ?: streetLine(props)
+        ?: props.text("city")
+        ?: props.text("district")
+        ?: props.text("county")
+        ?: props.text("state")
+        ?: props.text("country")
 
     /** "street housenumber", or just the street. */
     private fun streetLine(props: JSONObject): String? {
@@ -70,6 +72,5 @@ internal object PhotonResponseParser {
             .ifBlank { null }
     }
 
-    private fun JSONObject.text(key: String): String? =
-        optString(key).trim().takeIf { it.isNotEmpty() && !isNull(key) }
+    private fun JSONObject.text(key: String): String? = optString(key).trim().takeIf { it.isNotEmpty() && !isNull(key) }
 }

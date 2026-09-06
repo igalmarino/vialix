@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.map
 
 /**
@@ -12,6 +15,10 @@ sealed interface MapStyleState {
     /** The downloaded style with [PoiLabelStylePatch] and, in the dark theme, [NightStylePatch] applied. */
     data class Patched(val json: String) : MapStyleState
 
-    /** Download failed, timed out, or the style cannot be inlined: load [styleUrl] as-is. */
-    data class Unavailable(val styleUrl: String) : MapStyleState
+    /**
+     * Load [styleUrl] as-is. [downloadFailed] when the style could not be fetched (offline, error,
+     * timed out), in which case the plain URL will most likely not load either and the user is
+     * offered a retry; `false` when it downloaded fine but cannot be inlined (relative URLs).
+     */
+    data class Unavailable(val styleUrl: String, val downloadFailed: Boolean) : MapStyleState
 }

@@ -1,10 +1,12 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.settings
 
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.galmarino.vialix.NavConfig
-import com.galmarino.vialix.voice.SpokenLanguage
 import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,21 +89,20 @@ class NavSettings(context: Context, defaults: NavConfig) {
         prefs.edit { persist() }
     }
 
-    private fun load(defaults: NavConfig): Settings =
-        Settings(
-            // Drop a stored tag Valhalla no longer knows rather than sending it blindly.
-            languageTag = prefs.getString(KEY_LANGUAGE, null)?.takeIf { it in SpokenLanguage.SUPPORTED_TAGS },
-            voiceEnabled = prefs.getBoolean(KEY_VOICE_ENABLED, defaults.voiceGuidance),
-            // The motorcycle profile is no longer offered; a choice saved by an older build falls back to the default.
-            routingProfile = prefs.getString(KEY_ROUTING_PROFILE, null)?.takeUnless { it == "motorcycle" } ?: defaults.routingProfile,
-            units =
-                prefs.getString(KEY_UNITS, null)?.let { name -> DistanceUnits.entries.firstOrNull { it.name == name } }
-                    ?: DistanceUnits.forLocale(Locale.getDefault()),
-            themeMode =
-                prefs.getString(KEY_THEME_MODE, null)?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
-                    ?: ThemeMode.SYSTEM,
+    /** Reads the raw values; the fallbacks and migrations are [Settings.restore], which is pure and tested. */
+    private fun load(defaults: NavConfig): Settings = Settings.restore(
+        StoredSettings(
+            languageTag = prefs.getString(KEY_LANGUAGE, null),
+            voiceEnabled = if (prefs.contains(KEY_VOICE_ENABLED)) prefs.getBoolean(KEY_VOICE_ENABLED, true) else null,
+            routingProfile = prefs.getString(KEY_ROUTING_PROFILE, null),
+            units = prefs.getString(KEY_UNITS, null),
+            themeMode = prefs.getString(KEY_THEME_MODE, null),
             uiLanguageTag = readAppLocale(appContext, prefs),
-        )
+        ),
+        defaultVoiceEnabled = defaults.voiceGuidance,
+        defaultRoutingProfile = defaults.routingProfile,
+        locale = Locale.getDefault(),
+    )
 
     private companion object {
         const val PREFS_NAME = "settings"

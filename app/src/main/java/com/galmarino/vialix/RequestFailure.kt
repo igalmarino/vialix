@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix
 
 import com.stadiamaps.ferrostar.core.InvalidStatusCodeException
@@ -19,11 +22,10 @@ sealed interface RequestFailure {
     data object Other : RequestFailure
 
     companion object {
-        fun of(e: Throwable): RequestFailure =
-            when (e) {
-                is InvalidStatusCodeException -> ServerError(e.statusCode)
-                is IOException -> Offline
-                else -> Other
-            }
+        fun of(e: Throwable): RequestFailure = when (e) {
+            is InvalidStatusCodeException -> ServerError(e.statusCode)
+            is IOException -> Offline
+            else -> Other
+        }
     }
 }

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.search
 
 import com.stadiamaps.ferrostar.core.InvalidStatusCodeException
@@ -19,11 +22,7 @@ import uniffi.ferrostar.GeographicCoordinate
  * [Geocoder] backed by a Photon server (komoot's open-source OSM geocoder). Shares the app's
  * `OkHttpClient`, so requests carry the same identifying headers as routing requests.
  */
-class PhotonGeocoder(
-    private val endpoint: String,
-    private val client: OkHttpClient,
-    private val limit: Int = DEFAULT_LIMIT,
-) : Geocoder {
+class PhotonGeocoder(private val endpoint: String, private val client: OkHttpClient, private val limit: Int = DEFAULT_LIMIT) : Geocoder {
 
     override suspend fun search(query: String, bias: GeographicCoordinate?, languageTag: String?): List<Place> =
         fetch(buildUrl(endpoint, query, bias, photonLanguage(languageTag), limit))
@@ -80,17 +79,16 @@ class PhotonGeocoder(
 }
 
 /** Suspends until the call completes; cancelling the coroutine cancels the call on the wire. */
-private suspend fun Call.await(): Response =
-    suspendCancellableCoroutine { continuation ->
-        enqueue(
-            object : Callback {
-                // If the coroutine was cancelled in the meantime, nobody will read (and close) the body.
-                override fun onResponse(call: Call, response: Response) = continuation.resume(response) { response.close() }
+private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
+    enqueue(
+        object : Callback {
+            // If the coroutine was cancelled in the meantime, nobody will read (and close) the body.
+            override fun onResponse(call: Call, response: Response) = continuation.resume(response) { response.close() }
 
-                override fun onFailure(call: Call, e: IOException) {
-                    if (!continuation.isCancelled) continuation.resumeWithException(e)
-                }
-            },
-        )
-        continuation.invokeOnCancellation { cancel() }
-    }
+            override fun onFailure(call: Call, e: IOException) {
+                if (!continuation.isCancelled) continuation.resumeWithException(e)
+            }
+        },
+    )
+    continuation.invokeOnCancellation { cancel() }
+}

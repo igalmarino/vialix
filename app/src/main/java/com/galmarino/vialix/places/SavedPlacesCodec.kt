@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.places
 
 import com.galmarino.vialix.navigation.Destination
@@ -12,15 +15,14 @@ import uniffi.ferrostar.GeographicCoordinate
  */
 object SavedPlacesCodec {
 
-    fun encode(places: SavedPlaces): String =
-        JSONObject()
-            .apply {
-                put(KEY_VERSION, VERSION)
-                places.home?.let { put(KEY_HOME, it.toJson()) }
-                places.work?.let { put(KEY_WORK, it.toJson()) }
-                put(KEY_RECENTS, JSONArray().apply { places.recents.forEach { put(it.toJson()) } })
-            }
-            .toString()
+    fun encode(places: SavedPlaces): String = JSONObject()
+        .apply {
+            put(KEY_VERSION, VERSION)
+            places.home?.let { put(KEY_HOME, it.toJson()) }
+            places.work?.let { put(KEY_WORK, it.toJson()) }
+            put(KEY_RECENTS, JSONArray().apply { places.recents.forEach { put(it.toJson()) } })
+        }
+        .toString()
 
     fun decode(json: String?): SavedPlaces {
         if (json.isNullOrBlank()) return SavedPlaces()
@@ -40,13 +42,12 @@ object SavedPlacesCodec {
         }
     }
 
-    private fun Destination.toJson(): JSONObject =
-        JSONObject().apply {
-            put(KEY_LAT, coordinate.lat)
-            put(KEY_LNG, coordinate.lng)
-            name?.let { put(KEY_NAME, it) }
-            address?.let { put(KEY_ADDRESS, it) }
-        }
+    private fun Destination.toJson(): JSONObject = JSONObject().apply {
+        put(KEY_LAT, coordinate.lat)
+        put(KEY_LNG, coordinate.lng)
+        name?.let { put(KEY_NAME, it) }
+        address?.let { put(KEY_ADDRESS, it) }
+    }
 
     /** `null` when the coordinate is missing or not a number. */
     private fun JSONObject.toDestination(): Destination? {

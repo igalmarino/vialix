@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.settings
 
 import java.util.Locale
@@ -66,6 +69,64 @@ class SettingsTest {
     @Test
     fun `default app language follows the device`() {
         assertEquals(null, Settings().uiLanguageTag)
+    }
+
+    private fun restore(stored: StoredSettings, locale: Locale = Locale.GERMANY) =
+        Settings.restore(stored, defaultVoiceEnabled = true, defaultRoutingProfile = "auto", locale = locale)
+
+    @Test
+    fun `an empty store yields the first-launch defaults`() {
+        assertEquals(Settings(units = DistanceUnits.METRIC), restore(StoredSettings()))
+        assertEquals(DistanceUnits.IMPERIAL, restore(StoredSettings(), locale = Locale.US).units)
+        assertFalse(
+            Settings.restore(StoredSettings(), defaultVoiceEnabled = false, defaultRoutingProfile = "bicycle", Locale.US).voiceEnabled,
+        )
+        assertEquals(
+            "bicycle",
+            Settings.restore(StoredSettings(), defaultVoiceEnabled = false, defaultRoutingProfile = "bicycle", Locale.US).routingProfile,
+        )
+    }
+
+    @Test
+    fun `stored values win over the defaults`() {
+        val stored =
+            StoredSettings(
+                languageTag = "fr-FR",
+                voiceEnabled = false,
+                routingProfile = "pedestrian",
+                units = "IMPERIAL",
+                themeMode = "DARK",
+                uiLanguageTag = "it",
+            )
+        assertEquals(
+            Settings(
+                languageTag = "fr-FR",
+                voiceEnabled = false,
+                routingProfile = "pedestrian",
+                units = DistanceUnits.IMPERIAL,
+                themeMode = ThemeMode.DARK,
+                uiLanguageTag = "it",
+            ),
+            restore(stored),
+        )
+    }
+
+    @Test
+    fun `a stored guidance language Valhalla does not support is dropped`() {
+        assertEquals(null, restore(StoredSettings(languageTag = "xx-XX")).languageTag)
+    }
+
+    @Test
+    fun `a retired routing profile falls back to the default`() {
+        assertEquals("auto", restore(StoredSettings(routingProfile = "motorcycle")).routingProfile)
+        assertEquals("truck", restore(StoredSettings(routingProfile = "truck")).routingProfile)
+    }
+
+    @Test
+    fun `unknown enum names fall back rather than crash`() {
+        val restored = restore(StoredSettings(units = "FURLONGS", themeMode = "SEPIA"), locale = Locale.UK)
+        assertEquals(DistanceUnits.IMPERIAL, restored.units)
+        assertEquals(ThemeMode.SYSTEM, restored.themeMode)
     }
 
     @Test
