@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.map
 
 import org.json.JSONArray
@@ -27,23 +30,26 @@ object NightStylePatch {
     enum class Role {
         /** Background, land use, water, buildings and non-road lines: the dark ground. */
         GROUND,
+
         /** Road (and runway, rail) fills: clearly lighter than the ground so they read at a glance. */
         ROAD,
+
         /** Road casings: between ground and road, so the fill stays the lighter of the two as in daylight. */
         CASING,
+
         /** Label text: light, mirroring how dark it was by day. */
         TEXT,
+
         /** Label halos: near-black, so they separate text from roads. */
         HALO,
     }
 
     /** `lightness` maps the daylight lightness (`0..1`) to the night one; saturation is scaled. */
     internal class Band(val lightness: (Double) -> Double, val saturationScale: Double) {
-        fun apply(color: CssColor): CssColor =
-            color.copy(
-                saturation = (color.saturation * saturationScale).coerceIn(0.0, 1.0),
-                lightness = lightness(color.lightness).coerceIn(0.0, 1.0),
-            )
+        fun apply(color: CssColor): CssColor = color.copy(
+            saturation = (color.saturation * saturationScale).coerceIn(0.0, 1.0),
+            lightness = lightness(color.lightness).coerceIn(0.0, 1.0),
+        )
     }
 
     private val bands: Map<Role, Band> =
@@ -81,21 +87,26 @@ object NightStylePatch {
         return style.toString()
     }
 
-    internal fun roleFor(layer: JSONObject, property: String): Role =
-        when {
-            property == "text-color" || property == "icon-color" -> Role.TEXT
-            property == "text-halo-color" || property == "icon-halo-color" -> Role.HALO
-            layer.optString("type") == "line" && layer.optString("source-layer") in ROAD_SOURCE_LAYERS ->
-                if (layer.optString("id").contains("casing", ignoreCase = true)) Role.CASING else Role.ROAD
-            else -> Role.GROUND
-        }
+    internal fun roleFor(layer: JSONObject, property: String): Role = when {
+        property == "text-color" || property == "icon-color" -> Role.TEXT
 
-    /** Rewrites every colour literal in [value], which may be a string, an expression array or a legacy function object. */
-    private fun recolour(value: Any, band: Band): Any =
-        when (value) {
-            is String -> CssColor.parse(value)?.let { band.apply(it).format() } ?: value
-            is JSONArray -> JSONArray().also { out -> for (i in 0 until value.length()) out.put(recolour(value.get(i), band)) }
-            is JSONObject -> value.also { obj -> for (key in obj.keys().asSequence().toList()) obj.put(key, recolour(obj.get(key), band)) }
-            else -> value
-        }
+        property == "text-halo-color" || property == "icon-halo-color" -> Role.HALO
+
+        layer.optString("type") == "line" && layer.optString("source-layer") in ROAD_SOURCE_LAYERS ->
+            if (layer.optString("id").contains("casing", ignoreCase = true)) Role.CASING else Role.ROAD
+
+        else -> Role.GROUND
+    }
+
+    /**
+     * Rewrites every colour literal in [value], which may be a string, an expression array or a legacy
+     * function object. Always returns a copy: a subtree shared between two properties must not be
+     * recoloured twice.
+     */
+    private fun recolour(value: Any, band: Band): Any = when (value) {
+        is String -> CssColor.parse(value)?.let { band.apply(it).format() } ?: value
+        is JSONArray -> JSONArray().also { out -> for (i in 0 until value.length()) out.put(recolour(value.get(i), band)) }
+        is JSONObject -> JSONObject().also { out -> for (key in value.keys()) out.put(key, recolour(value.get(key), band)) }
+        else -> value
+    }
 }

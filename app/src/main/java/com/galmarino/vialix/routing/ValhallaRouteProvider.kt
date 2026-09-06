@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.routing
 
 import android.util.Log
@@ -79,9 +82,12 @@ class ValhallaRouteProvider(
         // The adapter owns a Rust handle; release it once the response is parsed.
         return RouteAdapter.fromWellKnownRouteProvider(provider).use { adapter ->
             val response = client.call(adapter.generateRequest(userLocation, waypoints))
+            // Read the body before looking at the status: in Ferrostar's OkHttp wrapper `bodyBytes()`
+            // is the only thing that closes the response, and an unread error reply (429/503 from
+            // the shared public server) would otherwise keep a pooled connection open.
+            val body = response.bodyBytes()
             if (!response.isSuccessful) throw InvalidStatusCodeException(response.code)
-            val body = response.bodyBytes() ?: throw NoResponseBodyException()
-            adapter.parseResponse(body)
+            adapter.parseResponse(body ?: throw NoResponseBodyException())
         }
     }
 
@@ -89,11 +95,10 @@ class ValhallaRouteProvider(
         private const val TAG = "ValhallaRouteProvider"
 
         /** Pure so it can be tested: the Valhalla request options for [settings]; `alternates` only when asked for. */
-        fun optionsJson(settings: Settings, alternates: Int): String =
-            JSONObject().apply {
-                put("units", settings.units.valhallaUnits)
-                put("language", settings.resolvedLanguageTag())
-                if (alternates > 0) put("alternates", alternates)
-            }.toString()
+        fun optionsJson(settings: Settings, alternates: Int): String = JSONObject().apply {
+            put("units", settings.units.valhallaUnits)
+            put("language", settings.resolvedLanguageTag())
+            if (alternates > 0) put("alternates", alternates)
+        }.toString()
     }
 }

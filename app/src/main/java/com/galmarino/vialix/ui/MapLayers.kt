@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui
 
 import androidx.compose.runtime.Composable
@@ -83,17 +86,16 @@ private val DarkMapPaint =
  * Ferrostar's own puck (the arrow drawn while navigating) in the same blue as [LocationPuckLayer],
  * so the two do not visibly swap colours when guidance starts.
  */
-fun navigationPuckStyle(paint: MapPaint): NavigationMapPuckStyle =
-    NavigationMapPuckStyle(
-        dotFillColorCurrentLocation = paint.location,
-        dotFillColorOldLocation = paint.location,
-        dotStrokeColor = paint.locationRing,
-        accuracyStrokeColor = paint.location.copy(alpha = 0.4f),
-        accuracyFillColor = paint.location.copy(alpha = 0.12f),
-        bearingColor = paint.location,
-        dotRadius = 6.dp,
-        dotStrokeWidth = 2.5.dp,
-    )
+fun navigationPuckStyle(paint: MapPaint): NavigationMapPuckStyle = NavigationMapPuckStyle(
+    dotFillColorCurrentLocation = paint.location,
+    dotFillColorOldLocation = paint.location,
+    dotStrokeColor = paint.locationRing,
+    accuracyStrokeColor = paint.location.copy(alpha = 0.4f),
+    accuracyFillColor = paint.location.copy(alpha = 0.12f),
+    bearingColor = paint.location,
+    dotRadius = 6.dp,
+    dotStrokeWidth = 2.5.dp,
+)
 
 /**
  * The user's position while browsing the map: accuracy circle, heading cone and centre dot.
@@ -156,8 +158,10 @@ fun LocationPuckLayer(location: UserLocation?, cameraState: CameraState, paint: 
 
 /** 12 dp dot ... */
 private val PUCK_DOT_RADIUS = 6.dp
+
 /** ... with a 2.5 dp white ring. */
 private val PUCK_RING_WIDTH = 2.5.dp
+
 /** How far the heading cone reaches from the dot. */
 private val HEADING_CONE_RADIUS = 48.dp
 private const val HEADING_CONE_HALF_ANGLE_DEG = 30.0
@@ -168,25 +172,24 @@ private const val HEADING_CONE_HALF_ANGLE_DEG = 30.0
  * `2 * r * sin(30°) = r`, hence the square image.
  */
 @Composable
-private fun rememberHeadingConePainter(color: Color): VectorPainter =
-    rememberVectorPainter(
-        defaultWidth = HEADING_CONE_RADIUS,
-        defaultHeight = HEADING_CONE_RADIUS,
-        autoMirror = false,
-    ) { viewportWidth, viewportHeight ->
-        val radius = viewportHeight
-        val chordY = viewportHeight - (radius * cos(Math.toRadians(HEADING_CONE_HALF_ANGLE_DEG))).toFloat()
-        Path(
-            pathData =
-                PathData {
-                    moveTo(viewportWidth / 2f, viewportHeight)
-                    lineTo(0f, chordY)
-                    arcTo(radius, radius, 0f, isMoreThanHalf = false, isPositiveArc = true, viewportWidth, chordY)
-                    close()
-                },
-            fill = Brush.verticalGradient(0f to color.copy(alpha = 0f), 1f to color.copy(alpha = 0.35f)),
-        )
-    }
+private fun rememberHeadingConePainter(color: Color): VectorPainter = rememberVectorPainter(
+    defaultWidth = HEADING_CONE_RADIUS,
+    defaultHeight = HEADING_CONE_RADIUS,
+    autoMirror = false,
+) { viewportWidth, viewportHeight ->
+    val radius = viewportHeight
+    val chordY = viewportHeight - (radius * cos(Math.toRadians(HEADING_CONE_HALF_ANGLE_DEG))).toFloat()
+    Path(
+        pathData =
+            PathData {
+                moveTo(viewportWidth / 2f, viewportHeight)
+                lineTo(0f, chordY)
+                arcTo(radius, radius, 0f, isMoreThanHalf = false, isPositiveArc = true, viewportWidth, chordY)
+                close()
+            },
+        fill = Brush.verticalGradient(0f to color.copy(alpha = 0f), 1f to color.copy(alpha = 0.35f)),
+    )
+}
 
 /** Red dot marking the destination the user long-pressed. */
 @Composable
@@ -217,12 +220,7 @@ fun DroppedPinLayer(pin: GeographicCoordinate?, paint: MapPaint) {
  */
 @Composable
 @MaplibreComposable
-fun SavedPlacesLayer(
-    places: SavedPlaces,
-    selected: GeographicCoordinate?,
-    paint: MapPaint,
-    onTap: (FavoriteKind) -> Unit,
-) {
+fun SavedPlacesLayer(places: SavedPlaces, selected: GeographicCoordinate?, paint: MapPaint, onTap: (FavoriteKind) -> Unit) {
     // Layer ids must stay stable per kind, hence one pair per enum entry rather than per set place.
     FavoriteKind.entries.forEach { kind ->
         val place = places.favorite(kind) ?: return@forEach

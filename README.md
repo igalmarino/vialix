@@ -19,7 +19,7 @@ route, and a foreground notification so guidance survives backgrounding.
 | Map tiles | [OpenFreeMap](https://openfreemap.org) "liberty" style | OSM-based, free, no API key |
 | Routing | [Valhalla](https://github.com/valhalla/valhalla) via the public FOSSGIS server | Open-source engine; the endpoint is a config value so any Valhalla instance works |
 | Geocoding | [Photon](https://github.com/komoot/photon) via komoot's public instance | Open-source OSM geocoder built for search-as-you-type; endpoint configurable, self-hostable |
-| Location | Google Play fused location when Play Services is present, Android `LocationManager` otherwise | Faster, steadier fixes on Play devices; still runs on GMS-free ROMs |
+| Location | Google Play fused location when Play Services is present (`full` flavour), Android `LocationManager` otherwise and in the `foss` flavour | Faster, steadier fixes on Play devices; still runs on GMS-free ROMs |
 | Build | Android Gradle Plugin 9.0, Gradle 9.2, Kotlin 2.3, Java 17 bytecode target built on a JDK 25 toolchain, `minSdk` 29 | Same toolchain Ferrostar is tested with; Gradle 9.2 needs Java ≤ 25 |
 
 ## Build and run
@@ -30,10 +30,19 @@ Android SDK with platform 36 and build-tools 36.0.0
 (`sdkmanager "platforms;android-36" "build-tools;36.0.0"`).
 
 ```sh
-cp local.properties.example local.properties   # set sdk.dir if ANDROID_HOME is not exported
-./gradlew assembleDebug testDebugUnitTest
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+cp local.properties.example local.properties   # optional; set sdk.dir there if ANDROID_HOME is not exported
+./gradlew assembleFullDebug testFullDebugUnitTest
+adb install -r app/build/outputs/apk/full/debug/app-full-debug.apk
 ```
+
+There are two flavours: `full` uses Google Play's fused location provider when the device has
+Play Services, `foss` (`assembleFossDebug`) has no proprietary code at all and always uses
+Android's own location manager.
+
+The debug build installs as `com.galmarino.vialix.debug`, next to a release build. Release builds
+are signed when `keystore.properties` (see `keystore.properties.example`) or the `VIALIX_STORE_*`
+environment is present, and unsigned otherwise; tagging `vX.Y.Z` makes the *Release* workflow
+publish a signed APK (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 On the device: grant location, wait for the puck, then either tap the search pill and pick a
 result (the search screen lists **Home** / **Work** and your recent destinations until you type;
@@ -46,6 +55,7 @@ search for its address, use your current location or remove it; long-press a rec
 or **Clear** them all from the header. Once set, Home and Work appear as markers on the map, and a
 tap on one previews the route there. The my-location button
 cycles free → follow → follow-with-heading; panning the map drops back to free.
+Other apps can hand Vialix a destination through a `geo:` link or a "Directions" button.
 Announcements are spoken through the system text-to-speech engine (make sure one is installed
 under Settings → Accessibility → Text-to-speech) and can be silenced with the mute button in the
 navigation view. The menu icon in the search pill opens **Settings**: guidance language, voice
@@ -91,10 +101,14 @@ app/src/main/java/com/galmarino/vialix/
 │   ├── Geo.kt                         Haversine distance, bearing, move-along-bearing (pure)
 │   ├── DisplayLocation.kt             Moves the fix shown during guidance ahead, cancelling Ferrostar's 1 s puck animation lag (pure)
 │   ├── Heading.kt                     Compass heading as the idle course when the GPS has none; angle smoothing (pure)
+│   ├── RoutePreview.kt                None / Fetching / Ready / Failed: the preview as one value (pure)
+│   ├── FixAge.kt                      When a fix is too old to be a routing origin (pure)
+│   ├── GeoIntent.kt                   geo: / google.navigation: links from other apps -> place or search (pure)
+│   ├── RerouteAnnouncer.kt, RerouteTuning.kt  When to say "Rerouting"; the core's reroute throttles (pure)
 │   └── NavigationControllerConfigs.kt Step-advance and deviation thresholds per travel mode
 ├── location/
 │   ├── CompassHeadingProvider.kt      Rotation-vector sensor -> true heading of the top of the screen
-│   └── FusedLocationProvider.kt       Google Play fused location; null without Play Services (then LocationManager)
+│   └── FusedLocationProvider.kt       (src/full, src/foss) Google Play fused location; null without Play Services (then LocationManager)
 ├── routing/
 │   ├── ClientIdInterceptor.kt         X-Client-Id / User-Agent on routing requests
 │   └── ValhallaRouteProvider.kt       Valhalla requests that follow the current settings
@@ -118,6 +132,7 @@ app/src/main/java/com/galmarino/vialix/
 │   ├── NightStylePatch.kt     Recolours the light style into the night palette (pure)
 │   ├── CssColor.kt            CSS colour parsing / HSL, used by the night patch (pure)
 │   ├── MapStyleLoader.kt      Downloads a style and applies the patches (light or dark)
+│   ├── MapStyleController.kt  App-scoped: the style for the current theme, with retry
 │   └── MapStyleState.kt       Loading / Patched / Unavailable, what the map should load
 ├── voice/
 │   ├── VoiceGuidance.kt       Ferrostar AndroidTtsObserver, follows the settings store
@@ -131,9 +146,10 @@ app/src/main/java/com/galmarino/vialix/
     ├── PlaceRows.kt           Recent / Home / Work rows and their manage dialogs (used by search)
     ├── DestinationSheet.kt    Route preview sheet content (name, mode switcher, alternatives, ETA, Retry, Start/Cancel)
     ├── ArrivalSheet.kt        "You've arrived" card with the trip summary
-    ├── MenuDrawer.kt          Navigation drawer behind the menu icon: Settings, version, data credits
+    ├── MenuDrawer.kt          Navigation drawer behind the menu icon: Settings, source, privacy, version, credits
+    ├── ReroutingBanner.kt     Takes the instruction banner's slot while a new route is on its way
     ├── MapLayers.kt           Location puck (dot, accuracy circle, heading cone), pin, Home/Work and route preview layers, per-theme paint
-    ├── Formatters.kt          Ferrostar distance / clock-time formatters following the units and guidance language
+    ├── Formatters.kt          Distance (Ferrostar), duration (ICU) and clock-time formatters following the units and guidance language
     ├── RoutingProfiles.kt     The offered costing models (car / bicycle / walking), shared by preview and Settings
     ├── RouteErrorText.kt, RequestFailureText.kt  Error enums -> user-facing strings
     ├── search/                Full-screen destination search (Home/Work + recents while empty, distances, retry)
@@ -147,7 +163,16 @@ app/src/main/java/com/galmarino/vialix/
 - Route options: avoid tolls/ferries
 - Offline maps (PMTiles) and offline routing (self-hosted or on-device Valhalla)
 - iOS: Ferrostar Swift bindings + a Kotlin Multiplatform module for the shared domain code
-- A `foss` build flavor without the Play Services location client, F-Droid metadata and a signed release pipeline (CI already builds, tests, lints and runs the R8 release build)
+- An F-Droid listing of the `foss` flavour (the fastlane metadata and the signed, tag-driven
+  release pipeline are in place)
+- Screenshot tests for the map chrome; a baseline profile
+
+## Contributing, privacy, security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and release process, [PRIVACY.md](PRIVACY.md)
+for what the app sends where (in short: your position to the routing server and the geocoder,
+nothing else, and nothing is stored off the phone), and [SECURITY.md](SECURITY.md) for reporting
+vulnerabilities. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

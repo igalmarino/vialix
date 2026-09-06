@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.navigation
 
 import uniffi.ferrostar.CourseFiltering
@@ -11,20 +14,20 @@ import uniffi.ferrostar.stepAdvanceDistanceToEndOfStep
 enum class TravelMode {
     DRIVING,
     CYCLING,
-    WALKING;
+    WALKING,
+    ;
 
     companion object {
         /**
          * The mode a Valhalla costing model implies for the three offered profiles (`auto`, `bicycle`,
          * `pedestrian`); anything unknown (`motorcycle`, `truck`, `bus`, ...) is treated as driving.
          */
-        fun forProfile(profile: String): TravelMode =
-            when (profile.trim().lowercase()) {
-                "auto" -> DRIVING
-                "pedestrian" -> WALKING
-                "bicycle" -> CYCLING
-                else -> DRIVING
-            }
+        fun forProfile(profile: String): TravelMode = when (profile.trim().lowercase()) {
+            "auto" -> DRIVING
+            "pedestrian" -> WALKING
+            "bicycle" -> CYCLING
+            else -> DRIVING
+        }
     }
 }
 
@@ -37,12 +40,11 @@ object NavigationControllerConfigs {
 
     fun forProfile(profile: String): NavigationControllerConfig = forMode(TravelMode.forProfile(profile))
 
-    fun forMode(mode: TravelMode): NavigationControllerConfig =
-        when (mode) {
-            TravelMode.DRIVING -> driving()
-            TravelMode.CYCLING -> cycling()
-            TravelMode.WALKING -> walking()
-        }
+    fun forMode(mode: TravelMode): NavigationControllerConfig = when (mode) {
+        TravelMode.DRIVING -> driving()
+        TravelMode.CYCLING -> cycling()
+        TravelMode.WALKING -> walking()
+    }
 
     /**
      * Sensible defaults for driving, taken from Ferrostar's reference configuration.
@@ -60,28 +62,26 @@ object NavigationControllerConfigs {
      *   request, and the spoken queue is cleared), which is the lesser evil.
      * - Snap the reported course to the route so the puck does not jitter.
      */
-    fun driving(): NavigationControllerConfig =
-        NavigationControllerConfig(
-            WaypointAdvanceMode.WaypointWithinRange(100.0),
-            stepAdvanceDistanceEntryAndExit(30u, 5u, 32u),
-            stepAdvanceDistanceToEndOfStep(10u, 32u),
-            RouteDeviationTracking.StaticThreshold(minimumHorizontalAccuracy = 40u, maxAcceptableDeviation = 30.0),
-            CourseFiltering.SNAP_TO_ROUTE,
-        )
+    fun driving(): NavigationControllerConfig = NavigationControllerConfig(
+        WaypointAdvanceMode.WaypointWithinRange(100.0),
+        stepAdvanceDistanceEntryAndExit(30u, 5u, 32u),
+        stepAdvanceDistanceToEndOfStep(10u, 32u),
+        RouteDeviationTracking.StaticThreshold(minimumHorizontalAccuracy = 40u, maxAcceptableDeviation = 30.0),
+        CourseFiltering.SNAP_TO_ROUTE,
+    )
 
     /**
      * Slower and closer to junctions than a car: tighter step advance and deviation thresholds,
      * with the accuracy gate relaxed to 30 m because a handlebar phone rarely does better in town.
      * Starting points; tune on the road.
      */
-    fun cycling(): NavigationControllerConfig =
-        NavigationControllerConfig(
-            WaypointAdvanceMode.WaypointWithinRange(50.0),
-            stepAdvanceDistanceEntryAndExit(20u, 3u, 25u),
-            stepAdvanceDistanceToEndOfStep(8u, 25u),
-            RouteDeviationTracking.StaticThreshold(minimumHorizontalAccuracy = 30u, maxAcceptableDeviation = 20.0),
-            CourseFiltering.SNAP_TO_ROUTE,
-        )
+    fun cycling(): NavigationControllerConfig = NavigationControllerConfig(
+        WaypointAdvanceMode.WaypointWithinRange(50.0),
+        stepAdvanceDistanceEntryAndExit(20u, 3u, 25u),
+        stepAdvanceDistanceToEndOfStep(8u, 25u),
+        RouteDeviationTracking.StaticThreshold(minimumHorizontalAccuracy = 30u, maxAcceptableDeviation = 20.0),
+        CourseFiltering.SNAP_TO_ROUTE,
+    )
 
     /**
      * Walking pace: manoeuvres are a few metres apart and a pedestrian who crosses the street is
@@ -89,12 +89,11 @@ object NavigationControllerConfigs {
      * phone in a pocket seldom reports better than 20-30 m, hence the 30 m accuracy gate.
      * Starting points; tune on the pavement.
      */
-    fun walking(): NavigationControllerConfig =
-        NavigationControllerConfig(
-            WaypointAdvanceMode.WaypointWithinRange(25.0),
-            stepAdvanceDistanceEntryAndExit(10u, 2u, 20u),
-            stepAdvanceDistanceToEndOfStep(5u, 20u),
-            RouteDeviationTracking.StaticThreshold(minimumHorizontalAccuracy = 30u, maxAcceptableDeviation = 25.0),
-            CourseFiltering.SNAP_TO_ROUTE,
-        )
+    fun walking(): NavigationControllerConfig = NavigationControllerConfig(
+        WaypointAdvanceMode.WaypointWithinRange(25.0),
+        stepAdvanceDistanceEntryAndExit(10u, 2u, 20u),
+        stepAdvanceDistanceToEndOfStep(5u, 20u),
+        RouteDeviationTracking.StaticThreshold(minimumHorizontalAccuracy = 30u, maxAcceptableDeviation = 25.0),
+        CourseFiltering.SNAP_TO_ROUTE,
+    )
 }

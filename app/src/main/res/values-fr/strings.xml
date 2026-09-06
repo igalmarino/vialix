@@ -82,7 +82,7 @@
     <string name="simulate_driving_summary">Rejoue l\'itinéraire au lieu d\'utiliser le GPS. Réinitialisé au redémarrage de l\'application.</string>
 
     <string name="permission_title">La localisation est requise</string>
-    <string name="permission_rationale">Vialix a besoin de la localisation précise pour afficher où vous êtes et vous guider le long de l\'itinéraire. Votre position est envoyée au serveur d\'itinéraires (comme point de départ d\'un itinéraire ou d\'une estimation du temps de trajet vers Domicile/Travail) et au serveur de recherche (pour classer d\'abord les résultats proches), et nulle part ailleurs.</string>
+    <string name="permission_rationale">Vialix a besoin de la localisation précise pour afficher où vous êtes et vous guider le long de l\'itinéraire. Votre position est envoyée au serveur d\'itinéraires (comme point de départ d\'un itinéraire) et au serveur de recherche (pour classer d\'abord les résultats proches), et nulle part ailleurs.</string>
     <string name="permission_retry">Autoriser la localisation</string>
     <string name="permission_denied_permanently">L\'accès à la localisation a été désactivé pour Vialix. Activez-le dans les paramètres de l\'application pour continuer.</string>
     <string name="permission_open_settings">Ouvrir les paramètres de l\'application</string>
@@ -92,4 +92,11 @@
     <string name="error_offline">Pas de connexion internet. Vérifiez votre réseau et réessayez.</string>
     <string name="error_route_server">Le serveur d\'itinéraires a renvoyé une erreur (%1$d). Réessayez plus tard.</string>
     <string name="error_route_request">La demande d\'itinéraire a échoué. Réessayez.</string>
+    <string name="map_style_unavailable">La carte n\'a pas pu être chargée.</string>
+    <string name="location_disabled">La localisation est désactivée sur cet appareil.</string>
+    <string name="location_turn_on">Activer</string>
+    <string name="menu_source_code">Code source</string>
+    <string name="menu_privacy">Politique de confidentialité</string>
+    <string name="menu_licenses">Licences open source</string>
+    <string name="licenses_note">Vialix est un logiciel libre sous licence GNU General Public License v3.0 ou ultérieure. Il repose sur les composants ci-dessous ; touchez l\'un d\'eux pour visiter son projet. Données cartographiques © contributeurs OpenStreetMap (ODbL).</string>
 </resources>

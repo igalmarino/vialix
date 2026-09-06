@@ -24,7 +24,7 @@
     <string name="search_hint">Search or long-press map</string>
     <string name="voice_search">Voice search</string>
     <string name="voice_search_prompt">Where do you want to go?</string>
-    <string name="my_location_free">Center on my location</string>
+    <string name="my_location_free">Centre on my location</string>
     <string name="my_location_follow">Following your location. Tap to follow your heading too</string>
     <string name="my_location_heading">Following your heading. Tap to stop following</string>
     <string name="hint_choose_destination">Search above or long-press the map to choose a destination</string>
@@ -84,7 +84,7 @@
     <string name="simulate_driving_summary">Replay the route instead of using GPS. Resets when the app restarts.</string>
 
     <string name="permission_title">Location is required</string>
-    <string name="permission_rationale">Vialix needs precise location access to show where you are and to guide you along the route. Your position is sent to the routing server (as the start of a route or of a Home/Work travel-time estimate) and to the search server (to rank nearby results first), and nowhere else.</string>
+    <string name="permission_rationale">Vialix needs precise location access to show where you are and to guide you along the route. Your position is sent to the routing server (as the start of a route) and to the search server (to rank nearby results first), and nowhere else.</string>
     <string name="permission_retry">Grant location access</string>
     <string name="permission_denied_permanently">Location access has been turned off for Vialix. Enable it in the app\'s settings to continue.</string>
     <string name="permission_open_settings">Open app settings</string>
@@ -94,4 +94,11 @@
     <string name="error_offline">No internet connection. Check your network and try again.</string>
     <string name="error_route_server">The routing server returned an error (%1$d). Try again later.</string>
     <string name="error_route_request">Route request failed. Try again.</string>
+    <string name="map_style_unavailable">The map could not be loaded.</string>
+    <string name="location_disabled">Location is turned off on this device.</string>
+    <string name="location_turn_on">Turn on</string>
+    <string name="menu_source_code">Source code</string>
+    <string name="menu_privacy">Privacy policy</string>
+    <string name="menu_licenses">Open-source licences</string>
+    <string name="licenses_note">Vialix is free software under the GNU General Public License v3.0 or later. It is built on the components below; tap one to visit its project. Map data © OpenStreetMap contributors (ODbL).</string>
 </resources>

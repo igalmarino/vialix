@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.search
 
 import com.galmarino.vialix.RequestFailure
@@ -163,6 +166,33 @@ class SearchViewModelTest {
     }
 
     private fun place(name: String) = Place(name, null, GeographicCoordinate(lat = 0.0, lng = 0.0))
+
+    @Test
+    fun `clearing the field cancels the request in flight and nothing repopulates the results`() = runTest(dispatcher) {
+        viewModel.onQueryChanged("Berlin")
+        advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 1)
+        assertEquals(listOf("Berlin"), geocoder.queries)
+
+        viewModel.onQueryChanged("")
+        advanceUntilIdle()
+
+        assertEquals(listOf("Berlin"), geocoder.cancelled)
+        assertFalse(viewModel.state.value.isSearching)
+        assertEquals(emptyList<Place>(), viewModel.state.value.results)
+        assertNull(viewModel.state.value.searchedQuery)
+    }
+
+    @Test
+    fun `a query is searched trimmed`() = runTest(dispatcher) {
+        viewModel.onQueryChanged("  Berlin ")
+        advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 1)
+        geocoder.complete(listOf(place("Berlin")))
+        advanceUntilIdle()
+
+        assertEquals(listOf("Berlin"), geocoder.queries)
+        assertEquals("Berlin", viewModel.state.value.searchedQuery)
+        assertEquals("  Berlin ", viewModel.state.value.query)
+    }
 
     /** Every call suspends until the test completes or fails it; cancellation is recorded. */
     private class FakeGeocoder : Geocoder {

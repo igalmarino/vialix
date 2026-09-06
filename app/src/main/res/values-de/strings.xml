@@ -82,7 +82,7 @@
     <string name="simulate_driving_summary">Die Route abspielen, statt GPS zu verwenden. Wird beim Neustart der App zurückgesetzt.</string>
 
     <string name="permission_title">Standort erforderlich</string>
-    <string name="permission_rationale">Vialix benötigt Zugriff auf den genauen Standort, um zu zeigen, wo du bist, und dich entlang der Route zu führen. Deine Position wird an den Routing-Server (als Start einer Route oder einer Reisezeitschätzung nach Zuhause/Arbeit) und an den Suchserver (um nahe Ergebnisse zuerst zu zeigen) gesendet, und sonst nirgendwohin.</string>
+    <string name="permission_rationale">Vialix benötigt Zugriff auf den genauen Standort, um zu zeigen, wo du bist, und dich entlang der Route zu führen. Deine Position wird an den Routing-Server (als Start einer Route) und an den Suchserver (um nahe Ergebnisse zuerst zu zeigen) gesendet, und sonst nirgendwohin.</string>
     <string name="permission_retry">Standortzugriff erlauben</string>
     <string name="permission_denied_permanently">Der Standortzugriff für Vialix wurde deaktiviert. Aktiviere ihn in den App-Einstellungen, um fortzufahren.</string>
     <string name="permission_open_settings">App-Einstellungen öffnen</string>
@@ -92,4 +92,11 @@
     <string name="error_offline">Keine Internetverbindung. Prüfe dein Netzwerk und versuche es erneut.</string>
     <string name="error_route_server">Der Routing-Server hat einen Fehler gemeldet (%1$d). Versuche es später erneut.</string>
     <string name="error_route_request">Routenanfrage fehlgeschlagen. Versuche es erneut.</string>
+    <string name="map_style_unavailable">Die Karte konnte nicht geladen werden.</string>
+    <string name="location_disabled">Der Standort ist auf diesem Gerät ausgeschaltet.</string>
+    <string name="location_turn_on">Einschalten</string>
+    <string name="menu_source_code">Quellcode</string>
+    <string name="menu_privacy">Datenschutzerklärung</string>
+    <string name="menu_licenses">Open-Source-Lizenzen</string>
+    <string name="licenses_note">Vialix ist freie Software unter der GNU General Public License v3.0 oder später. Es baut auf den folgenden Komponenten auf; tippe auf eine, um ihr Projekt zu besuchen. Kartendaten © OpenStreetMap-Mitwirkende (ODbL).</string>
 </resources>

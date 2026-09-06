@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.settings
 
 import java.util.Locale
@@ -17,6 +20,5 @@ object UiLanguage {
      * The translation Android will pick for [locale] when the app follows the system: the same
      * language if there is one, else English. Used to name the "System default (…)" choice.
      */
-    fun resolve(locale: Locale): String =
-        SUPPORTED_TAGS.firstOrNull { it == locale.language } ?: DEFAULT_TAG
+    fun resolve(locale: Locale): String = SUPPORTED_TAGS.firstOrNull { it == locale.language } ?: DEFAULT_TAG
 }

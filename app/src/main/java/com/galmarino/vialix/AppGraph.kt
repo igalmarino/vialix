@@ -1,30 +1,13 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix
 
 import android.content.Context
 import android.util.Log
-import com.stadiamaps.ferrostar.composeui.notification.DefaultForegroundNotificationBuilder
-import com.stadiamaps.ferrostar.core.AlternativeRouteProcessor
-import com.stadiamaps.ferrostar.core.CorrectiveAction
-import com.stadiamaps.ferrostar.core.FerrostarCore
-import com.stadiamaps.ferrostar.core.RouteDeviationHandler
-import com.stadiamaps.ferrostar.core.isNavigating
-import com.stadiamaps.ferrostar.core.http.HttpClientProvider
-import com.stadiamaps.ferrostar.core.http.OkHttpClientProvider.Companion.toOkHttpClientProvider
 import com.galmarino.vialix.location.CompassHeadingProvider
 import com.galmarino.vialix.location.FusedLocationProvider
-import com.stadiamaps.ferrostar.core.location.AndroidLocationProvider
-import com.stadiamaps.ferrostar.core.location.NavigationLocationProvider
-import com.stadiamaps.ferrostar.core.location.SimulatedLocationProvider
-import com.stadiamaps.ferrostar.core.service.FerrostarForegroundServiceManager
-import com.stadiamaps.ferrostar.core.service.ForegroundServiceManager
-import java.time.Duration
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.time.toJavaDuration
-import okhttp3.OkHttpClient
+import com.galmarino.vialix.map.MapStyleController
 import com.galmarino.vialix.map.MapStyleLoader
 import com.galmarino.vialix.navigation.NavigationControllerConfigs
 import com.galmarino.vialix.navigation.RerouteTuning
@@ -36,6 +19,31 @@ import com.galmarino.vialix.search.Geocoder
 import com.galmarino.vialix.search.PhotonGeocoder
 import com.galmarino.vialix.settings.NavSettings
 import com.galmarino.vialix.voice.VoiceGuidance
+import com.stadiamaps.ferrostar.composeui.notification.DefaultForegroundNotificationBuilder
+import com.stadiamaps.ferrostar.core.AlternativeRouteProcessor
+import com.stadiamaps.ferrostar.core.CorrectiveAction
+import com.stadiamaps.ferrostar.core.FerrostarCore
+import com.stadiamaps.ferrostar.core.RouteDeviationHandler
+import com.stadiamaps.ferrostar.core.http.HttpClientProvider
+import com.stadiamaps.ferrostar.core.http.OkHttpClientProvider.Companion.toOkHttpClientProvider
+import com.stadiamaps.ferrostar.core.isNavigating
+import com.stadiamaps.ferrostar.core.location.AndroidLocationProvider
+import com.stadiamaps.ferrostar.core.location.NavigationLocationProvider
+import com.stadiamaps.ferrostar.core.location.SimulatedLocationProvider
+import com.stadiamaps.ferrostar.core.service.FerrostarForegroundServiceManager
+import com.stadiamaps.ferrostar.core.service.ForegroundServiceManager
+import java.time.Duration
+import kotlin.time.toJavaDuration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import uniffi.ferrostar.Route
 
 /**
  * Hand-rolled dependency graph for the app. Small enough that a DI framework would add more
@@ -57,8 +65,11 @@ class AppGraph(context: Context) {
         SavedPlacesRepository(SharedPreferencesKeyValueStore(appContext, PLACES_PREFS, PLACES_KEY))
     }
 
-    /** For the few collectors that must outlive any screen (settings -> TTS). */
+    /** For the few collectors that must outlive any screen (settings -> TTS, the reroute swap). */
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /** A reroute waiting for the "Rerouting" announcement to finish before it is swapped in. Main thread only. */
+    private var pendingRouteSwap: Job? = null
 
     /**
      * Live positions come from Google Play's fused location provider when Play Services is on the
@@ -95,8 +106,8 @@ class AppGraph(context: Context) {
     /** Forward geocoding for the destination search. */
     val geocoder: Geocoder by lazy { PhotonGeocoder(config.geocoderEndpoint, okHttpClient) }
 
-    /** Fetches the map style so the POI label fix can be applied before MapLibre loads it. */
-    val mapStyleLoader: MapStyleLoader by lazy { MapStyleLoader(okHttpClient) }
+    /** The basemap for the current theme, patched before MapLibre sees it; the Activity pushes the theme in. */
+    val mapStyle: MapStyleController by lazy { MapStyleController(config, MapStyleLoader(okHttpClient), appScope) }
 
     private val foregroundServiceManager: ForegroundServiceManager by lazy {
         FerrostarForegroundServiceManager(appContext, DefaultForegroundNotificationBuilder(appContext))
@@ -150,18 +161,37 @@ class AppGraph(context: Context) {
                     Log.w(TAG, "Reroute returned no routes; staying on the current one")
                 } else {
                     Log.i(TAG, "Rerouted: ${route.distance.toInt()} m, ${route.steps.size} steps")
-                    val wait = voiceGuidance.remainingAnnouncementMs()
-                    if (wait <= 0) {
-                        core.replaceRoute(route)
-                    } else {
-                        appScope.launch {
-                            delay(wait)
-                            if (core.state.value.isNavigating()) core.replaceRoute(route)
-                        }
-                    }
+                    scheduleRouteSwap(core, route)
+                }
+            }
+
+            // A swap still waiting when the trip ends must not land in the next trip.
+            appScope.launch {
+                state.map { it.isNavigating() }.distinctUntilChanged().collect { navigating ->
+                    if (!navigating) cancelRouteSwap()
                 }
             }
         }
+    }
+
+    /**
+     * Swaps [route] in once the current announcement is done. Runs on the main thread, like the trip
+     * watcher above and any earlier swap, so a newer reroute cleanly supersedes one still waiting.
+     */
+    private fun scheduleRouteSwap(core: FerrostarCore, route: Route) {
+        appScope.launch {
+            cancelRouteSwap()
+            pendingRouteSwap = launch {
+                val wait = voiceGuidance.remainingAnnouncementMs()
+                if (wait > 0) delay(wait)
+                if (core.state.value.isNavigating()) core.replaceRoute(route)
+            }
+        }
+    }
+
+    private fun cancelRouteSwap() {
+        pendingRouteSwap?.cancel()
+        pendingRouteSwap = null
     }
 
     private companion object {

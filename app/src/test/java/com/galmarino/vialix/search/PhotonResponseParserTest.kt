@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.search
 
 import org.json.JSONException
@@ -92,6 +95,5 @@ class PhotonResponseParserTest {
         return """{"type":"Feature","geometry":$geometry,"properties":$properties}"""
     }
 
-    private fun collection(vararg features: String): String =
-        """{"type":"FeatureCollection","features":[${features.joinToString(",")}]}"""
+    private fun collection(vararg features: String): String = """{"type":"FeatureCollection","features":[${features.joinToString(",")}]}"""
 }

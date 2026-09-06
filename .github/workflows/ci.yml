@@ -5,32 +5,55 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+# A new push to the same branch or PR supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      # The committed wrapper JAR must be one Gradle published.
+      - uses: gradle/actions/wrapper-validation@v6
 
       # gradle/gradle-daemon-jvm.properties pins the daemon to a Java 25 toolchain; this is it.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           packages: platforms;android-36 build-tools;36.0.0 platform-tools
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
-      - name: Build, unit tests, lint
-        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug
+      # Formatting gate; the rules are in .editorconfig. `ktlint --format` fixes most findings locally.
+      - name: ktlint
+        run: |
+          curl -sSL -o ktlint https://github.com/pinterest/ktlint/releases/download/${KTLINT_VERSION}/ktlint
+          chmod +x ktlint
+          ./ktlint --relative "app/src/**/*.kt"
+        env:
+          KTLINT_VERSION: 1.8.0
 
-      - name: Release build (R8 + resource shrinking)
-        run: ./gradlew --no-daemon assembleRelease
+      - name: Build, unit tests, lint (full flavour)
+        run: ./gradlew --no-daemon assembleFullDebug testFullDebugUnitTest lintFullDebug
 
-      - uses: actions/upload-artifact@v4
+      - name: Build and lint the foss flavour
+        run: ./gradlew --no-daemon assembleFossDebug lintFossDebug
+
+      - name: Release builds (R8 + resource shrinking, unsigned)
+        run: ./gradlew --no-daemon assembleFullRelease assembleFossRelease
+
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: reports
@@ -39,7 +62,13 @@ jobs:
             app/build/test-results/
           if-no-files-found: ignore
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/*/debug/*.apk
+
+      # Without these a crash report from an R8 build cannot be read back.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-mapping
+          path: app/build/outputs/mapping/*/mapping.txt

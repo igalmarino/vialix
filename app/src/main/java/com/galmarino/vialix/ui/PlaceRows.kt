@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -19,11 +23,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.galmarino.vialix.R
@@ -32,11 +38,14 @@ import com.galmarino.vialix.places.FavoriteKind
 
 /**
  * List rows and dialogs for saved places, used by the search screen's empty state. Tap navigates;
- * long-press (when [onLongClick] is given) manages the entry.
+ * long-press (when [onLongClick] is given) manages the entry. The same action sits behind a
+ * visible "more" button at the end of the row and is offered to TalkBack as a custom action, so
+ * long-press is a shortcut rather than the only way in.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun RecentRow(destination: Destination, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
+    val manageLabel = stringResource(R.string.recent_remove)
     ListItem(
         headlineContent = {
             Text(destination.name ?: stringResource(R.string.dropped_pin_title), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -51,8 +60,14 @@ internal fun RecentRow(destination: Destination, onClick: () -> Unit, onLongClic
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
-        trailingContent = { Icon(painter = painterResource(R.drawable.ic_chevron_right), contentDescription = null) },
-        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = withLongPressHaptic(onLongClick)),
+        trailingContent = { ManageButton(onLongClick, manageLabel) },
+        modifier =
+            Modifier.combinedClickable(
+                role = Role.Button,
+                onClick = onClick,
+                onLongClick = withLongPressHaptic(onLongClick),
+                onLongClickLabel = onLongClick?.let { manageLabel },
+            ),
     )
 }
 
@@ -63,6 +78,7 @@ internal fun RecentRow(destination: Destination, onClick: () -> Unit, onLongClic
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun FavoriteRow(kind: FavoriteKind, destination: Destination?, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
+    val manageLabel = stringResource(R.string.favorite_options, stringResource(kind.labelRes()))
     ListItem(
         headlineContent = { Text(stringResource(kind.labelRes())) },
         supportingContent = {
@@ -80,9 +96,27 @@ internal fun FavoriteRow(kind: FavoriteKind, destination: Destination?, onClick:
         leadingContent = {
             Icon(painter = painterResource(kind.iconRes()), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         },
-        trailingContent = { Icon(painter = painterResource(R.drawable.ic_chevron_right), contentDescription = null) },
-        modifier = Modifier.combinedClickable(onClick = onClick, onLongClick = withLongPressHaptic(onLongClick)),
+        trailingContent = { ManageButton(onLongClick, manageLabel) },
+        modifier =
+            Modifier.combinedClickable(
+                role = Role.Button,
+                onClick = onClick,
+                onLongClick = withLongPressHaptic(onLongClick),
+                onLongClickLabel = onLongClick?.let { manageLabel },
+            ),
     )
+}
+
+/** The row's trailing "more" button when it can be managed, else the plain chevron of a row that only navigates. */
+@Composable
+private fun ManageButton(onManage: (() -> Unit)?, label: String) {
+    if (onManage == null) {
+        Icon(painter = painterResource(R.drawable.ic_chevron_right), contentDescription = null)
+    } else {
+        IconButton(onClick = onManage) {
+            Icon(painter = painterResource(R.drawable.ic_more_vert), contentDescription = label)
+        }
+    }
 }
 
 /** Wraps a long-press action so it gives the same haptic tick as the other long-presses in the app. */
@@ -174,7 +208,7 @@ internal fun SectionHeaderRow(title: String, modifier: Modifier = Modifier, acti
     ) {
         Text(
             text = title,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).semantics { heading() },
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -182,14 +216,12 @@ internal fun SectionHeaderRow(title: String, modifier: Modifier = Modifier, acti
     }
 }
 
-fun FavoriteKind.labelRes(): Int =
-    when (this) {
-        FavoriteKind.HOME -> R.string.favorite_home
-        FavoriteKind.WORK -> R.string.favorite_work
-    }
+fun FavoriteKind.labelRes(): Int = when (this) {
+    FavoriteKind.HOME -> R.string.favorite_home
+    FavoriteKind.WORK -> R.string.favorite_work
+}
 
-internal fun FavoriteKind.iconRes(): Int =
-    when (this) {
-        FavoriteKind.HOME -> R.drawable.ic_home
-        FavoriteKind.WORK -> R.drawable.ic_work
-    }
+internal fun FavoriteKind.iconRes(): Int = when (this) {
+    FavoriteKind.HOME -> R.drawable.ic_home
+    FavoriteKind.WORK -> R.drawable.ic_work
+}

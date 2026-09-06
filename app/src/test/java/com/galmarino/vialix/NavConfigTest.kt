@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix
 
 import org.junit.Assert.assertEquals
@@ -109,14 +112,13 @@ class NavConfigTest {
         assertThrows(IllegalArgumentException::class.java) { NavConfig(geocoderEndpoint = "photon.komoot.io") }
     }
 
-    private fun voiceGuidance(value: String?): NavConfig =
-        NavConfig.fromValues(
-            valhallaEndpoint = null,
-            routingProfile = null,
-            mapStyleUrl = null,
-            mapStyleUrlDark = null,
-            clientId = null,
-            voiceGuidance = value,
-            geocoderEndpoint = null,
-        )
+    private fun voiceGuidance(value: String?): NavConfig = NavConfig.fromValues(
+        valhallaEndpoint = null,
+        routingProfile = null,
+        mapStyleUrl = null,
+        mapStyleUrlDark = null,
+        clientId = null,
+        voiceGuidance = value,
+        geocoderEndpoint = null,
+    )
 }

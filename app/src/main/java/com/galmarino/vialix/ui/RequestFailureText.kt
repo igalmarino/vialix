@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui
 
 import androidx.annotation.StringRes
@@ -11,9 +14,8 @@ import com.galmarino.vialix.RequestFailure
  * it was; the other two are worded per feature (`R.string.error_route_server`, ...).
  */
 @Composable
-internal fun failureText(failure: RequestFailure, @StringRes serverError: Int, @StringRes other: Int): String =
-    when (failure) {
-        RequestFailure.Offline -> stringResource(R.string.error_offline)
-        is RequestFailure.ServerError -> stringResource(serverError, failure.statusCode)
-        RequestFailure.Other -> stringResource(other)
-    }
+internal fun failureText(failure: RequestFailure, @StringRes serverError: Int, @StringRes other: Int): String = when (failure) {
+    RequestFailure.Offline -> stringResource(R.string.error_offline)
+    is RequestFailure.ServerError -> stringResource(serverError, failure.statusCode)
+    RequestFailure.Other -> stringResource(other)
+}

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui
 
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.galmarino.vialix.R
 import com.stadiamaps.ferrostar.core.NavigationUiState
@@ -34,7 +40,8 @@ fun NavigationUiState.isRerouting(): Boolean {
 /** Takes the instruction banner's slot while the user is off route and a new route is on its way. */
 @Composable
 fun ReroutingBanner(modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
+    // It appears exactly when the visual instruction is gone, so a screen reader is told at once.
+    Card(modifier = modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Assertive }) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui
 
 import androidx.compose.foundation.background
@@ -21,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -34,7 +38,8 @@ import com.galmarino.vialix.R
  * The caller owns the `ModalNavigationDrawer` and its state; this is only the drawer sheet.
  */
 @Composable
-fun MenuDrawerContent(routingCredit: String, searchCredit: String, onOpenSettings: () -> Unit) {
+fun MenuDrawerContent(routingCredit: String, searchCredit: String, onOpenSettings: () -> Unit, onOpenLicenses: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
     ModalDrawerSheet {
         Column(modifier = Modifier.fillMaxHeight().padding(vertical = 12.dp)) {
             DrawerHeader()
@@ -44,6 +49,29 @@ fun MenuDrawerContent(routingCredit: String, searchCredit: String, onOpenSetting
                 icon = { Icon(painter = painterResource(R.drawable.ic_settings), contentDescription = null) },
                 selected = false,
                 onClick = onOpenSettings,
+                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+            )
+            // A GPL app carries its offer of source with it; the privacy policy is what the location
+            // permission's rationale promises, in full.
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.menu_source_code)) },
+                icon = { Icon(painter = painterResource(R.drawable.ic_code), contentDescription = null) },
+                selected = false,
+                onClick = { uriHandler.openUri(SOURCE_URL) },
+                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.menu_licenses)) },
+                icon = { Icon(painter = painterResource(R.drawable.ic_license), contentDescription = null) },
+                selected = false,
+                onClick = onOpenLicenses,
+                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.menu_privacy)) },
+                icon = { Icon(painter = painterResource(R.drawable.ic_shield), contentDescription = null) },
+                selected = false,
+                onClick = { uriHandler.openUri(PRIVACY_URL) },
                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
             )
             // The version and data credits are pinned to the bottom of the drawer, away from
@@ -100,3 +128,6 @@ private fun DrawerHeader() {
 }
 
 private val LOGO_TILE_SIZE = 56.dp
+
+private const val SOURCE_URL = "https://github.com/igalmarino/vialix"
+private const val PRIVACY_URL = "https://github.com/igalmarino/vialix/blob/main/PRIVACY.md"

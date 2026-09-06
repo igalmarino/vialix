@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui.settings
 
 import androidx.compose.foundation.layout.Row
@@ -25,13 +28,7 @@ data class Choice<T>(val value: T, val label: String)
 
 /** A single-choice picker: tapping an option selects it and closes the dialog. */
 @Composable
-fun <T> ChoiceDialog(
-    title: String,
-    choices: List<Choice<T>>,
-    selected: T,
-    onSelect: (T) -> Unit,
-    onDismiss: () -> Unit,
-) {
+fun <T> ChoiceDialog(title: String, choices: List<Choice<T>>, selected: T, onSelect: (T) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },

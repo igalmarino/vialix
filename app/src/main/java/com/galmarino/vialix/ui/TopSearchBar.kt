@@ -1,12 +1,18 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -21,6 +27,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.galmarino.vialix.R
 
@@ -32,12 +40,7 @@ import com.galmarino.vialix.R
  * against the basemap.
  */
 @Composable
-fun TopSearchBar(
-    onMenuClick: () -> Unit,
-    onSearchClick: () -> Unit,
-    onMicClick: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-) {
+fun TopSearchBar(onMenuClick: () -> Unit, onSearchClick: () -> Unit, onMicClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val chrome = mapChrome()
     Surface(
         onClick = onSearchClick,
@@ -52,9 +55,11 @@ fun TopSearchBar(
             IconButton(onClick = onMenuClick) {
                 Icon(painter = painterResource(R.drawable.ic_menu), contentDescription = stringResource(R.string.menu))
             }
+            // The visible hint mentions the long-press; a screen reader gets the action instead.
+            val accessibleName = stringResource(R.string.search_placeholder)
             Text(
                 text = stringResource(R.string.search_hint),
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp).semantics { contentDescription = accessibleName },
                 style = MaterialTheme.typography.bodyLarge,
                 color = chrome.hint,
                 maxLines = 1,
@@ -70,17 +75,19 @@ fun TopSearchBar(
     }
 }
 
-/** Keeps status-bar glyphs legible over the map tiles; fades into the map below. */
+/** Keeps status-bar glyphs legible over the map tiles; fades into the map below the bar. */
 @Composable
 fun StatusBarScrim(modifier: Modifier = Modifier) {
     val chrome = mapChrome()
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(STATUS_BAR_SCRIM_HEIGHT)
-                .background(Brush.verticalGradient(listOf(chrome.surface.copy(alpha = 0.65f), Color.Transparent)))
+                .height(statusBarHeight + STATUS_BAR_SCRIM_FADE)
+                .background(Brush.verticalGradient(listOf(chrome.surface.copy(alpha = 0.65f), Color.Transparent))),
     )
 }
 
-private val STATUS_BAR_SCRIM_HEIGHT = 44.dp
+/** How far below the status bar the scrim fades out. */
+private val STATUS_BAR_SCRIM_FADE = 20.dp

@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Ferrostar and MapLibre Compose move together: the UI modules break at runtime on any other
+      # maplibre-compose version, so both are bumped by hand (see gradle/libs.versions.toml). AGP,
+      # Kotlin and the Compose BOM also mirror what Ferrostar is built against; their PRs are
+      # opened but need that check before merging.
+      - dependency-name: "org.maplibre.compose:*"
+      - dependency-name: "com.stadiamaps.ferrostar:*"
+    groups:
+      androidx:
+        patterns: ["androidx.*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.ui.theme
 
 import androidx.compose.material3.MaterialTheme
@@ -17,11 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
 @Composable
-fun VialixTheme(
-    darkTheme: Boolean,
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit,
-) {
+fun VialixTheme(darkTheme: Boolean, dynamicColor: Boolean = true, content: @Composable () -> Unit) {
     val colorScheme =
         when {
             // minSdk is 29, but dynamic color needs Android 12 (API 31). Guarded at runtime.
@@ -29,8 +28,10 @@ fun VialixTheme(
                 val context = LocalContext.current
                 if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             }
+
             // Full tonal palettes seeded on the location blue, see Color.kt.
             darkTheme -> DarkColors
+
             else -> LightColors
         }
     CompositionLocalProvider(LocalDarkTheme provides darkTheme) {

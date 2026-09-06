@@ -82,7 +82,7 @@
     <string name="simulate_driving_summary">Riproduce il percorso invece di usare il GPS. Si azzera al riavvio dell\'app.</string>
 
     <string name="permission_title">La posizione è necessaria</string>
-    <string name="permission_rationale">Vialix ha bisogno della posizione precisa per mostrare dove sei e guidarti lungo il percorso. La tua posizione viene inviata al server dei percorsi (come inizio di un percorso o di una stima del tempo di viaggio verso Casa/Lavoro) e al server di ricerca (per mostrare prima i risultati vicini), e a nessun altro.</string>
+    <string name="permission_rationale">Vialix ha bisogno della posizione precisa per mostrare dove sei e guidarti lungo il percorso. La tua posizione viene inviata al server dei percorsi (come inizio di un percorso) e al server di ricerca (per mostrare prima i risultati vicini), e a nessun altro.</string>
     <string name="permission_retry">Consenti l\'accesso alla posizione</string>
     <string name="permission_denied_permanently">L\'accesso alla posizione è stato disattivato per Vialix. Attivalo nelle impostazioni dell\'app per continuare.</string>
     <string name="permission_open_settings">Apri le impostazioni dell\'app</string>
@@ -92,4 +92,11 @@
     <string name="error_offline">Nessuna connessione a internet. Controlla la rete e riprova.</string>
     <string name="error_route_server">Il server dei percorsi ha restituito un errore (%1$d). Riprova più tardi.</string>
     <string name="error_route_request">Richiesta del percorso non riuscita. Riprova.</string>
+    <string name="map_style_unavailable">Impossibile caricare la mappa.</string>
+    <string name="location_disabled">La posizione è disattivata su questo dispositivo.</string>
+    <string name="location_turn_on">Attiva</string>
+    <string name="menu_source_code">Codice sorgente</string>
+    <string name="menu_privacy">Informativa sulla privacy</string>
+    <string name="menu_licenses">Licenze open source</string>
+    <string name="licenses_note">Vialix è software libero sotto la GNU General Public License v3.0 o successiva. È costruito sui componenti seguenti; toccane uno per visitare il suo progetto. Dati della mappa © collaboratori di OpenStreetMap (ODbL).</string>
 </resources>

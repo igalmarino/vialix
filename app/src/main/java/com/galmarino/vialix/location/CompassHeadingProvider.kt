@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.location
 
 import android.content.Context
@@ -49,38 +52,42 @@ class CompassHeadingProvider private constructor(
     }
 
     /** Smoothed magnetic heading of the top of the screen, at the sensor's UI rate. */
-    private fun magneticHeadings(): Flow<Double> =
-        callbackFlow {
-                val rotationVector = FloatArray(4)
-                val rotationMatrix = FloatArray(9)
-                val orientation = FloatArray(3)
-                val smoother = HeadingSmoother()
-                val listener =
-                    object : SensorEventListener {
-                        override fun onSensorChanged(event: SensorEvent) {
-                            if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
-                            // Some devices report a fifth (accuracy) value; the matrix wants four.
-                            System.arraycopy(event.values, 0, rotationVector, 0, minOf(4, event.values.size))
-                            SensorManager.getRotationMatrixFromVector(rotationMatrix, rotationVector)
-                            SensorManager.getOrientation(rotationMatrix, orientation)
-                            val azimuth = Math.toDegrees(orientation[0].toDouble())
-                            trySend(smoother.update(screenHeadingDegrees(azimuth, displayRotationDegrees())))
-                        }
+    private fun magneticHeadings(): Flow<Double> = callbackFlow {
+        // `getRotationMatrixFromVector` decides by the *destination* length whether the
+        // fourth quaternion component is given or has to be derived, so a sensor that reports
+        // three values must get a three-element array; passing four with a zero in the last
+        // slot yields a systematically wrong azimuth. Some devices also report a fifth
+        // (accuracy) value, which the matrix does not want.
+        val rotationVector3 = FloatArray(3)
+        val rotationVector4 = FloatArray(4)
+        val rotationMatrix = FloatArray(9)
+        val orientation = FloatArray(3)
+        val smoother = HeadingSmoother()
+        val listener =
+            object : SensorEventListener {
+                override fun onSensorChanged(event: SensorEvent) {
+                    if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
+                    val rotationVector = if (event.values.size >= 4) rotationVector4 else rotationVector3
+                    System.arraycopy(event.values, 0, rotationVector, 0, minOf(rotationVector.size, event.values.size))
+                    SensorManager.getRotationMatrixFromVector(rotationMatrix, rotationVector)
+                    SensorManager.getOrientation(rotationMatrix, orientation)
+                    val azimuth = Math.toDegrees(orientation[0].toDouble())
+                    trySend(smoother.update(screenHeadingDegrees(azimuth, displayRotationDegrees())))
+                }
 
-                        override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
-                    }
-                sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
-                awaitClose { sensorManager.unregisterListener(listener) }
+                override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
             }
-            .conflate()
+        sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_UI)
+        awaitClose { sensorManager.unregisterListener(listener) }
+    }
+        .conflate()
 
-    private fun displayRotationDegrees(): Int =
-        when (displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.rotation) {
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> 0
-        }
+    private fun displayRotationDegrees(): Int = when (displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.rotation) {
+        Surface.ROTATION_90 -> 90
+        Surface.ROTATION_180 -> 180
+        Surface.ROTATION_270 -> 270
+        else -> 0
+    }
 
     companion object {
         /** Ten updates a second is plenty for a cone and a rotating map, and cheap on recomposition. */
@@ -97,12 +104,11 @@ class CompassHeadingProvider private constructor(
 }
 
 /** Difference between magnetic and true north at [location], degrees east positive. */
-private fun declinationDegrees(location: UserLocation): Double =
-    GeomagneticField(
-            location.coordinates.lat.toFloat(),
-            location.coordinates.lng.toFloat(),
-            0f,
-            System.currentTimeMillis(),
-        )
-        .declination
-        .toDouble()
+private fun declinationDegrees(location: UserLocation): Double = GeomagneticField(
+    location.coordinates.lat.toFloat(),
+    location.coordinates.lng.toFloat(),
+    0f,
+    System.currentTimeMillis(),
+)
+    .declination
+    .toDouble()

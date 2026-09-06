@@ -82,7 +82,7 @@
     <string name="simulate_driving_summary">Reproduce la ruta en lugar de usar el GPS. Se restablece al reiniciar la aplicación.</string>
 
     <string name="permission_title">Se necesita la ubicación</string>
-    <string name="permission_rationale">Vialix necesita acceso a la ubicación precisa para mostrar dónde estás y guiarte por la ruta. Tu posición se envía al servidor de rutas (como inicio de una ruta o de una estimación del tiempo de viaje a Casa/Trabajo) y al servidor de búsqueda (para mostrar primero los resultados cercanos), y a ningún otro sitio.</string>
+    <string name="permission_rationale">Vialix necesita acceso a la ubicación precisa para mostrar dónde estás y guiarte por la ruta. Tu posición se envía al servidor de rutas (como inicio de una ruta) y al servidor de búsqueda (para mostrar primero los resultados cercanos), y a ningún otro sitio.</string>
     <string name="permission_retry">Permitir acceso a la ubicación</string>
     <string name="permission_denied_permanently">El acceso a la ubicación está desactivado para Vialix. Actívalo en los ajustes de la aplicación para continuar.</string>
     <string name="permission_open_settings">Abrir ajustes de la aplicación</string>
@@ -92,4 +92,11 @@
     <string name="error_offline">Sin conexión a internet. Comprueba la red e inténtalo de nuevo.</string>
     <string name="error_route_server">El servidor de rutas devolvió un error (%1$d). Inténtalo más tarde.</string>
     <string name="error_route_request">La solicitud de ruta falló. Inténtalo de nuevo.</string>
+    <string name="map_style_unavailable">No se pudo cargar el mapa.</string>
+    <string name="location_disabled">La ubicación está desactivada en este dispositivo.</string>
+    <string name="location_turn_on">Activar</string>
+    <string name="menu_source_code">Código fuente</string>
+    <string name="menu_privacy">Política de privacidad</string>
+    <string name="menu_licenses">Licencias de código abierto</string>
+    <string name="licenses_note">Vialix es software libre bajo la GNU General Public License v3.0 o posterior. Está construido sobre los componentes siguientes; toca uno para visitar su proyecto. Datos del mapa © colaboradores de OpenStreetMap (ODbL).</string>
 </resources>

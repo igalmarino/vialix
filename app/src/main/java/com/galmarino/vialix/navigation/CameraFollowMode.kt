@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.navigation
 
 /**
@@ -15,15 +18,16 @@ enum class CameraFollowMode {
     FOLLOW,
 
     /** The camera keeps the user centred and rotates with the direction of travel. */
-    HEADING;
+    HEADING,
+
+    ;
 
     /** The mode a tap on the button switches to. */
-    fun next(): CameraFollowMode =
-        when (this) {
-            FREE -> FOLLOW
-            FOLLOW -> HEADING
-            HEADING -> FREE
-        }
+    fun next(): CameraFollowMode = when (this) {
+        FREE -> FOLLOW
+        FOLLOW -> HEADING
+        HEADING -> FREE
+    }
 
     val isFollowing: Boolean
         get() = this != FREE

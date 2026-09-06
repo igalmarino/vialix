@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.navigation
 
 import java.time.Instant
@@ -13,14 +16,13 @@ import uniffi.ferrostar.UserLocation
 
 class HeadingTest {
 
-    private fun fix(speedMps: Double?, courseDegrees: Int?) =
-        UserLocation(
-            coordinates = GeographicCoordinate(lat = 48.8566, lng = 2.3522),
-            horizontalAccuracy = 5.0,
-            courseOverGround = courseDegrees?.let { CourseOverGround(it.toUShort(), null) },
-            timestamp = Instant.ofEpochMilli(1_700_000_000_000L),
-            speed = speedMps?.let { Speed(it, null) },
-        )
+    private fun fix(speedMps: Double?, courseDegrees: Int?) = UserLocation(
+        coordinates = GeographicCoordinate(lat = 48.8566, lng = 2.3522),
+        horizontalAccuracy = 5.0,
+        courseOverGround = courseDegrees?.let { CourseOverGround(it.toUShort(), null) },
+        timestamp = Instant.ofEpochMilli(1_700_000_000_000L),
+        speed = speedMps?.let { Speed(it, null) },
+    )
 
     private fun UserLocation.course(): Int? = courseOverGround?.degrees?.toInt()
 

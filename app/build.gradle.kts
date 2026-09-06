@@ -21,6 +21,21 @@ fun override(name: String): String =
 /** The value as a Java string literal, so a quote or backslash in an override cannot break BuildConfig. */
 fun String.asJavaLiteral(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
+// Release signing: keystore.properties (git-ignored; see keystore.properties.example) or, in CI,
+// the VIALIX_STORE_FILE / VIALIX_STORE_PASSWORD / VIALIX_KEY_ALIAS / VIALIX_KEY_PASSWORD
+// environment. With neither, assembleRelease produces an unsigned APK, which is what the CI
+// build on every push wants.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun signing(name: String): String? =
+    (keystoreProperties.getProperty(name) ?: System.getenv("VIALIX_" + name.replace(Regex("([A-Z])"), "_$1").uppercase()))
+        ?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = signing("storeFile")?.let { rootProject.file(it) }?.takeIf { it.exists() }
+
 android {
     namespace = "com.galmarino.vialix"
     compileSdk = 36
@@ -48,13 +63,59 @@ android {
         }
     }
 
+    // `full` adds Google Play's fused location provider, the one proprietary dependency; `foss`
+    // runs entirely on open-source components and uses the platform LocationManager. Same
+    // applicationId: F-Droid builds `foss`, everything else `full`. `location/FusedLocationProvider`
+    // exists once per flavour (src/full, src/foss) with the same `create()` signature.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("full") {
+            dimension = "distribution"
+            isDefault = true
+        }
+        create("foss") {
+            dimension = "distribution"
+        }
+    }
+
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = releaseStoreFile
+                storePassword = signing("storePassword")
+                keyAlias = signing("keyAlias")
+                keyPassword = signing("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // A debug install can sit next to the release one on the same device.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             // R8 with Ferrostar's consumer rules (JNA + uniffi bindings) plus proguard-rules.pro.
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
+    }
+
+    dependenciesInfo {
+        // No Play-encrypted dependency metadata in the APK: reproducible builds (F-Droid) need it off.
+        includeInApk = false
+        includeInBundle = false
+    }
+
+    lint {
+        lintConfig = file("lint.xml")
+        // Timber is not a dependency; the stock check fires on every android.util.Log call.
+        disable += "LogNotTimber"
+        // Dependency updates are Dependabot's job (.github/dependabot.yml), not a lint finding.
+        disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
     }
 
     compileOptions {
@@ -112,8 +173,9 @@ dependencies {
     implementation(libs.ferrostar.ui.formatters)
     implementation(libs.maplibre.compose)
 
-    // Fused location on devices that have Play Services; the app falls back to LocationManager without it.
-    implementation(libs.play.services.location)
+    // Fused location on devices that have Play Services (full flavour only); the app falls back to
+    // LocationManager without it, and the foss flavour never has it.
+    "fullImplementation"(libs.play.services.location)
 
     implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp)
@@ -122,4 +184,5 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     // Android's org.json is a throwing stub on the JVM test classpath; this is the real thing.
     testImplementation(libs.org.json)
+    testImplementation(libs.okhttp.mockwebserver)
 }

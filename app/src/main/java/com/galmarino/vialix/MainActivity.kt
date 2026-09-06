@@ -1,8 +1,13 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -28,15 +33,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.galmarino.vialix.navigation.GeoIntent
+import com.galmarino.vialix.navigation.GeoTarget
 import com.galmarino.vialix.navigation.NavigationViewModel
 import com.galmarino.vialix.search.SearchViewModel
 import com.galmarino.vialix.settings.systemManagesAppLocale
 import com.galmarino.vialix.settings.withAppLocale
+import com.galmarino.vialix.ui.LicensesScreen
 import com.galmarino.vialix.ui.NavigationScreen
 import com.galmarino.vialix.ui.rememberDistanceFormatter
 import com.galmarino.vialix.ui.search.SearchScreen
 import com.galmarino.vialix.ui.settings.SettingsScreen
 import com.galmarino.vialix.ui.theme.VialixTheme
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 
 class MainActivity : ComponentActivity() {
 
@@ -45,6 +55,9 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: NavigationViewModel by viewModels { NavigationViewModel.Factory(graph) }
     private val searchViewModel: SearchViewModel by viewModels { SearchViewModel.Factory(graph, viewModel.location) }
+
+    /** A place or query another app handed over through a `geo:` link, until the UI has taken it. */
+    private val externalTarget = MutableStateFlow<GeoTarget?>(null)
 
     /**
      * API 29–32: apply the App language setting ourselves (on 33+ the framework does it from the
@@ -60,6 +73,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // The OS per-app language screen may have changed it while the process was alive.
         graph.settings.syncUiLanguageFromSystem()
+        handleIntent(intent)
         // Edge to edge. `auto` picks the glyph colour from the configuration's night flag for the
         // frame before Compose draws; SystemBarGlyphs below then follows the resolved theme, which
         // is what everything under the bars (map tiles, chrome, sheets, pages) follows as well.
@@ -75,13 +89,33 @@ class MainActivity : ComponentActivity() {
             // glyphs and — through the ViewModel — the basemap style.
             val currentSettings by graph.settings.state.collectAsStateWithLifecycle()
             val isDark = currentSettings.resolvesToDark(isSystemInDarkTheme())
-            LaunchedEffect(isDark) { viewModel.onDarkThemeChanged(isDark) }
+            LaunchedEffect(isDark) { graph.mapStyle.onDarkThemeChanged(isDark) }
 
             VialixTheme(darkTheme = isDark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var showSettings by rememberSaveable { mutableStateOf(false) }
+                    var showLicenses by rememberSaveable { mutableStateOf(false) }
                     var showSearch by rememberSaveable { mutableStateOf(false) }
                     SystemBarGlyphs(darkTheme = isDark)
+
+                    // A geo: link: a coordinate goes straight to the preview, free text to the search.
+                    LaunchedEffect(Unit) {
+                        externalTarget.filterNotNull().collect { target ->
+                            externalTarget.value = null
+                            when (target) {
+                                is GeoTarget.Place -> {
+                                    showSearch = false
+                                    viewModel.onPlacePicked(target.destination)
+                                }
+
+                                is GeoTarget.Query -> {
+                                    searchViewModel.onQueryChanged(target.text)
+                                    searchViewModel.submit()
+                                    showSearch = true
+                                }
+                            }
+                        }
+                    }
 
                     // The settings and search pages are layered over the map rather than replacing
                     // it, so the MapLibre view (and its camera) survives a round trip through them.
@@ -90,7 +124,9 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             config = graph.config,
                             settings = graph.settings,
+                            mapStyle = graph.mapStyle,
                             onOpenSettings = { showSettings = true },
+                            onOpenLicenses = { showLicenses = true },
                             onOpenSearch = { showSearch = true },
                             onVoiceQuery = { text ->
                                 searchViewModel.onQueryChanged(text)
@@ -133,10 +169,28 @@ class MainActivity : ComponentActivity() {
                                 onBack = { showSettings = false },
                             )
                         }
+                        OverlayScreen(visible = showLicenses) {
+                            LicensesScreen(onBack = { showLicenses = false })
+                        }
                     }
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val uri = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
+        val target = GeoIntent.parse(uri)
+        if (target == null) Log.w(TAG, "Ignoring unparseable geo intent") else externalTarget.value = target
+    }
+
+    private companion object {
+        const val TAG = "MainActivity"
     }
 }
 

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.search
 
 import android.util.Log
@@ -57,6 +60,9 @@ class SearchViewModel(
     private val query = MutableStateFlow("")
     private val submits = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
+    /** The query dropped below the minimum length: cancel whatever is in flight, now, not after the debounce. */
+    private val clears = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
     private val _state = MutableStateFlow(SearchState())
     val state: StateFlow<SearchState> = _state.asStateFlow()
 
@@ -65,19 +71,20 @@ class SearchViewModel(
             merge(
                 query.debounce(DEBOUNCE_MS).map { Request(it, forced = false) },
                 submits.map { Request(query.value, forced = true) },
+                clears.map { Request("", forced = false) },
             ).collectLatest { runSearch(it) }
         }
     }
 
     fun onQueryChanged(text: String) {
         query.value = text
-        _state.update {
-            if (text.trim().length < MIN_QUERY_LENGTH) {
-                // Too short to search: show the hint right away rather than after the debounce.
-                it.copy(query = text, results = emptyList(), searchedQuery = null, error = null, isSearching = false)
-            } else {
-                it.copy(query = text)
-            }
+        if (text.trim().length < MIN_QUERY_LENGTH) {
+            // Too short to search: show the hint right away rather than after the debounce, and
+            // make sure a request still running for the previous text cannot repopulate the results.
+            _state.update { it.copy(query = text, results = emptyList(), searchedQuery = null, error = null, isSearching = false) }
+            clears.tryEmit(Unit)
+        } else {
+            _state.update { it.copy(query = text) }
         }
     }
 
@@ -90,6 +97,7 @@ class SearchViewModel(
     fun reset() {
         query.value = ""
         _state.value = SearchState()
+        clears.tryEmit(Unit)
     }
 
     private suspend fun runSearch(request: Request) {

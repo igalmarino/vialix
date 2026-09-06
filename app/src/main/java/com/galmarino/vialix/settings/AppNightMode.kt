@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Ignacio Galmarino
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 package com.galmarino.vialix.settings
 
 import android.app.UiModeManager
@@ -19,8 +22,10 @@ fun applyAppNightMode(context: Context, mode: ThemeMode) {
             // For the per-app mode the framework maps CUSTOM (and AUTO) to "undefined", i.e.
             // follow the system's night mode; NO and YES pin it.
             ThemeMode.SYSTEM -> UiModeManager.MODE_NIGHT_CUSTOM
+
             ThemeMode.LIGHT -> UiModeManager.MODE_NIGHT_NO
+
             ThemeMode.DARK -> UiModeManager.MODE_NIGHT_YES
-        }
+        },
     )
 }
