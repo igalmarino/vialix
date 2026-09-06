@@ -11,14 +11,20 @@ navigation core. GPL-3.0-or-later. See `README.md` for the tech-stack rationale 
 ## Commands
 
 ```sh
-./gradlew assembleDebug                 # build the debug APK
-./gradlew testDebugUnitTest             # JVM unit tests
-./gradlew lintDebug                     # Android Lint (report: app/build/reports/lint-results-debug.*)
-./gradlew assembleRelease               # R8-minified, resource-shrunk (unsigned) release APK
-./gradlew testDebugUnitTest --tests "com.galmarino.vialix.NavConfigTest"                 # one class
-./gradlew testDebugUnitTest --tests "com.galmarino.vialix.ui.FormattersTest.*coordinates*"  # one test
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleFullDebug             # build the debug APK (full flavour: with the Play Services location client)
+./gradlew testFullDebugUnitTest         # JVM unit tests (the flavours share them; run one)
+./gradlew lintFullDebug lintFossDebug   # Android Lint (report: app/build/reports/lint-results-fullDebug.*)
+./gradlew assembleFullRelease assembleFossRelease   # R8-minified, resource-shrunk release APKs; signed only with keystore.properties / VIALIX_STORE_* env
+./gradlew testFullDebugUnitTest --tests "com.galmarino.vialix.NavConfigTest"                 # one class
+./gradlew testFullDebugUnitTest --tests "com.galmarino.vialix.ui.FormattersTest.*coordinates*"  # one test
+adb install -r app/build/outputs/apk/full/debug/app-full-debug.apk
 ```
+
+Two product flavours in the `distribution` dimension: `full` (default; adds `play-services-location`
+as `fullImplementation`) and `foss` (no proprietary code, F-Droid). Each has its own
+`location/FusedLocationProvider.kt` under `src/full` and `src/foss` with the same `create()`
+signature; nothing else differs. The flavour-less task names (`assembleDebug`, `testDebugUnitTest`)
+still exist as aggregates over both flavours and take twice as long.
 
 Requires an Android SDK with `platforms;android-36` + `build-tools;36.0.0`. The dev container
 installs these and exports `ANDROID_HOME=/opt/android-sdk`; outside it, copy
@@ -36,7 +42,20 @@ with a toolchain-not-found message; install one (in the dev container it is
 JDK 17 is installed in the container.)
 
 There is no instrumented-test source set. CI is `.github/workflows/ci.yml` (JDK 25, SDK 36:
-`assembleDebug testDebugUnitTest lintDebug`, then `assembleRelease` to keep R8 honest).
+wrapper validation, `assembleFullDebug testFullDebugUnitTest lintFullDebug`, the foss debug build
+and lint, then both release builds to keep R8 honest; the debug APKs and the R8 `mapping.txt`
+files are uploaded as artifacts). Pushing a `v*` tag runs
+`.github/workflows/release.yml`, which builds the signed APK from the `VIALIX_*` repository secrets
+and attaches it to a GitHub release; the release process (CHANGELOG, `versionCode` + 1, tag) is in
+`CONTRIBUTING.md`. Dependabot (`.github/dependabot.yml`) opens version PRs but ignores Ferrostar and
+MapLibre Compose, which move together. The debug build type has `applicationIdSuffix ".debug"`.
+CI also runs **ktlint** 1.8.0 (`android_studio` style, rules in `.editorconfig`; Composables are
+exempt from the function-naming rule) over `app/src`: run `ktlint --format "app/src/**/*.kt"` before
+pushing. The `lint {}` block disables `LogNotTimber` and the stale-version checks, and `app/lint.xml` ignores
+`ObsoleteSdkInt` for `mipmap-anydpi-v26` (AAPT2 does not resolve the manifest icon from a plain
+`mipmap-anydpi` folder), so the report only holds actionable findings; it is currently clean and
+the error count must stay at zero. Backups and device transfers exclude the preferences
+(`res/xml/data_extraction_rules.xml` + `backup_rules.xml`): the recents are a location history.
 
 ## Configuration flow
 
@@ -76,10 +95,12 @@ built `FerrostarCore`.
 
 **Ferrostar owns navigation state; the app owns pre-navigation state.** `NavigationViewModel`
 extends Ferrostar's `DefaultNavigationViewModel`, so route following, step advance, deviation
-detection, and rerouting all live in the Rust core. The app adds a separate `ScreenState`
-(destination pin, route preview, fetch/error status, pending Home/Work assignment, the
-`activeDestination` guidance is heading to, the `arrival` summary, one-shot `notice`s) for
-everything that happens *before* `startNavigation` and *after* the trip completes. `navigationUiState` is overridden to inject the app's own location into
+detection, and rerouting all live in the Rust core. The app adds a separate `ScreenState` (destination pin, the `preview` as a `RoutePreview`
+sum type — `navigation/RoutePreview.kt`, pure, unit-tested: `None` / `Fetching` / `Ready(options,
+selected)` / `Failed(error)`, so "fetching and failed" or "a selection without routes" cannot be
+represented; a snackbar `error` for the failures that have no preview to sit in; pending Home/Work
+assignment, the `activeDestination` guidance is heading to, the `arrival` summary, one-shot
+`notice`s) for everything that happens *before* `startNavigation` and *after* the trip completes. `navigationUiState` is overridden to inject the app's own location into
 Ferrostar's state while idle, so the puck is visible before a route exists; once navigating,
 Ferrostar's snapped location wins, but moved ahead by `DisplayLocationPredictor`
 (`navigation/DisplayLocation.kt`, pure, unit-tested): Ferrostar's map view animates the puck and the
@@ -96,9 +117,18 @@ Because there is no preview UI during guidance, `selectDestination` (and the map
 handler) ignore picks while navigating rather than leaving a stale pin behind for afterwards.
 
 `startNavigation` passes a per-trip `NavigationControllerConfig` chosen from the routing profile
-(`NavigationControllerConfigs.forProfile` → `TravelMode` DRIVING / CYCLING / WALKING; unknown costings such as `motorcycle` map to DRIVING) and catches
-Ferrostar's `UserLocationUnknown`, surfacing it as `RouteError.NoLocationFix` and keeping the
-preview so Start can be tapped again.
+(`NavigationControllerConfigs.forProfile` → `TravelMode` DRIVING / CYCLING / WALKING; unknown costings such as `motorcycle` map to DRIVING). It refuses to
+start without a **fresh** fix (`navigation/FixAge.kt`, pure: `UserLocation.isFresh`, 60 s), surfacing
+`RouteError.NoLocationFix` and keeping the preview so Start can be tapped again; Ferrostar 0.54's
+`startNavigation` declares `UserLocationUnknown` but never throws it (it anchors the session at the
+route's first point instead), so the guard is the app's. The same freshness test gates the routing
+origin in `fetchRoute` and "Use my current location" for Home/Work, because the idle location flow
+keeps its last value while the app is in the background. Route requests hold one `routeJob`: a new
+request (Retry, a profile switch, a new pin) cancels the one in flight, so a slow reply cannot land on
+top of a newer one; the coordinate comparison (`isSelected`) remains as the second guard.
+On Android 13+ the `POST_NOTIFICATIONS` permission for the foreground-service notification is
+requested when Start is tapped (`NavigationScreen`), not alongside the location dialog at first
+launch; guidance starts whatever the answer.
 
 **Arrival.** `NavigationUiState.isNavigating()` is `progress != null`, and `TripState.Complete`
 has no progress, so on arrival the screen falls back to its idle chrome by itself; nothing in
@@ -111,24 +141,41 @@ The grace period exists because `FerrostarCore.stopNavigation()` calls
 
 **Alternative routes.** The preview asks `ValhallaRouteProvider.getRoutes(..., alternates = 2)`
 directly (not `core.getRoutes`, so reroutes still get one route);
-`ScreenState.routeOptions` + `selectedRoute` hold the answer and `routePreview` is the selected
-one. The sheet shows a chip per option ("25 min · via A1", `Route.viaName()` in
+`ScreenState.preview` holds the answer (`RoutePreview.of(routes)`: `Ready` with the first selected,
+`Failed(NoRouteFound)` for none; `routeOptions`, `selectedRoute` and `routePreview` on `ScreenState`
+are derived getters). The sheet shows a chip per option ("25 min · via A1", `Route.viaName()` in
 `navigation/RouteVia.kt`, pure) when there is more than one, `RoutePreviewLayer` draws the others
-in grey underneath, and the camera frames all of them. `ValhallaRouteProvider.optionsJson` is pure
-and tested.
+in grey underneath, and the camera frames all of them; that framing effect is keyed on `routeOptions`
+only and reads the sheet height once it has held still for 100 ms, because the sheet re-measures when
+the address label arrives and re-framing then would undo the user's pan. `ValhallaRouteProvider.optionsJson`
+is pure and tested; `getRoutes` reads the response body *before* checking the status, because in
+Ferrostar's OkHttp wrapper `bodyBytes()` is the only thing that closes the response.
 
-**Route errors** are shown inline in the preview sheet with a Retry (`retryRoute`) while a
-destination is selected; the snackbar only gets errors with no destination to attach to. The
+**Route errors.** A failed request is `RoutePreview.Failed` and is shown inline in the preview
+sheet with a Retry (`retryRoute`); `ScreenState.error` is only for failures with no preview to sit
+in (Start refused without a fresh fix) and goes to the snackbar. The snackbar effects are keyed on
+the error / notice *value* and clear it before showing it, so the same error recurring is a new
+key and shows again. A third snackbar, with a *Turn on* action opening the system location
+settings, appears while the permission is granted but the system location switch is off
+(`isLocationEnabled`, re-checked on every resume). The
 preview also has a car / bicycle / walking switcher that writes `NavSettings.routingProfile`
-(the settings collector in the ViewModel re-fetches the preview), and shows the arrival clock time
+(the settings collector in the ViewModel re-fetches the route through `requestRoute`, which does not
+rebind TTS or reverse-geocode again the way `selectDestination` does), and shows the arrival clock time
 (`navigation/ArrivalTime.kt`, pure). `ui/RoutingProfiles.kt` is the one list of offered costing
 models, shared with the Settings picker.
 
 **Idle location only runs in the foreground.** The ViewModel outlives a backgrounded Activity, so
 its 1 Hz `locationUpdates` collection is gated on `hasLocationPermission && isInForeground`;
 `NavigationScreen` drives the flag from a `LifecycleStartEffect`. During guidance Ferrostar holds its
-own location subscription (and the foreground service), so this only affects the idle puck and
-route requests. `KeepScreenOnDisposableEffect` is likewise applied only while navigating.
+own location subscription (and the foreground service), and the fused provider opens a second GPS
+request per collector, so the ViewModel's `_location` is then fed from Ferrostar's state
+(`LocationSource.GUIDANCE`) instead of the provider; that also keeps it current for the moment the
+trip ends. The provider flow has a `.catch`: a permission revoked while the process lives ends the
+fused flow (`FusedLocationProvider` closes it) or makes the platform one throw, and neither may
+take the app down. `KeepScreenOnDisposableEffect` is likewise applied only while navigating.
+Decisions in the ViewModel ("are we navigating?") read `core.state.value.isNavigating()`, never the
+derived `navigationUiState.value`, which is `WhileSubscribed` and frozen when nothing collects it.
+`onCleared()` releases the TTS engine and switches simulation off when no trip is running.
 
 **Errors shown to the user never carry exception text** (an OkHttp message can include the endpoint
 URL, API key and all). Failures are reduced to `RequestFailure` (`Offline` / `ServerError(code)` /
@@ -138,7 +185,14 @@ URL, API key and all). Failures are reduced to `RequestFailure` (`Offline` / `Se
 **Map screen layout.** `NavigationScreen` is a Material3 `BottomSheetScaffold` whose content is
 Ferrostar's `DynamicallyOrientingNavigationView` plus, while idle, the status-bar scrim, the
 full-width search pill (`TopSearchBar`) and the FAB stack (`MapFabStack`, currently only the
-my-location button). The pill's menu icon opens a `ModalNavigationDrawer` wrapping the whole map
+my-location button). `NavigationMap` owns only what decides the layout (guidance running, sheet mode
+and height, camera options) and delegates to composables with narrower state reads, because the
+location updates at 1 Hz: `SheetContent` (preview / arrival crossfade), `MapCanvas` (the Ferrostar
+view, the app's layers, `IdleChrome`, the FAB; reads the style and saved places itself),
+`MyLocationFab` (the only reader of `cameraMode`, which flips on every gesture) and `MapMessages`
+(all one-off snackbars). The menu drawer also opens `LicensesScreen` (`ThirdPartyLicenses.kt`, a
+hand-maintained list checked by a unit test against every group in the version catalog: a new
+dependency cannot ship uncredited). The pill's menu icon opens a `ModalNavigationDrawer` wrapping the whole map
 screen (`ui/MenuDrawer.kt`: Settings, version, data credits); its edge-swipe gesture is enabled
 only while it is open, so a swipe from the edge pans the map rather than opening the drawer. The sheet has three modes: hidden while idle (the map is unobstructed; there
 is deliberately no Home/Work/recents drawer, those live on the search screen) and while navigating
@@ -206,19 +260,21 @@ text, halo; raster layers get `raster-brightness-max` 0.35. The bands live in on
 colours; the shield layers have no `paint` and are untouched on purpose. Colour parsing/formatting
 is `map/CssColor.kt` (pure, hand-rolled HSL; `android.graphics.Color` is a stub in tests).
 `mapStyleUrlDark` is optional: `null` (blank) means "derive"; set, it is loaded as-is with only the
-POI patch (`NavConfig.mapStyleUrlFor(dark)` / `derivesNightStyle(dark)`, both pure). The ViewModel
-does not know the theme itself: `MainActivity` pushes the resolved dark flag through
-`onDarkThemeChanged`, and a collector loads the matching style whenever the flag changes
-(`collectLatest`, so a flip mid-download cancels it). The style URL is remote, so the patches are
+POI patch (`NavConfig.mapStyleUrlFor(dark)` / `derivesNightStyle(dark)`, both pure). `MainActivity` pushes the resolved dark flag through `MapStyleController.onDarkThemeChanged`, and
+its collector loads the matching style whenever the flag changes (`collectLatest`, so a flip
+mid-download cancels it). The style URL is remote, so the patches are
 applied at runtime: `MapStyleLoader.load(url, night)` downloads the style (remembering the last
 body, so a theme toggle re-patches without a second download), `PoiLabelStylePatch` (pure,
 unit-tested; `text-max-width` 8, `text-letter-spacing` 0 on POI symbol layers) then
-`NightStylePatch` edit it, and the ViewModel publishes a `MapStyleState`: `Loading` (the screen
+`NightStylePatch` edit it, and `map/MapStyleController` (app-scoped, owned by `AppGraph`; the
+ViewModel knows nothing about styles or the theme) publishes a `MapStyleState`: `Loading` (the screen
 shows an inline style with only a theme-coloured background, `emptyStyleJson(dark)`, so the map is
 not loaded twice and does not flash; nothing loads until the Activity has reported the theme),
-`Patched(json)` (passed as `BaseStyle.Json`) or `Unavailable(styleUrl)` (download failed, timed out
-after 3 s, or the style uses relative URLs: that URL is loaded as-is and the patches are lost; in
-the derived dark theme that means the light map). A later theme change leaves the current style up
+`Patched(json)` (passed as `BaseStyle.Json`) or `Unavailable(styleUrl, downloadFailed)` (that URL is
+loaded as-is and the patches are lost; in the derived dark theme that means the light map).
+`downloadFailed` is `true` for a failed or timed-out (3 s) download, in which case the plain URL will
+most likely not load either, so the screen shows a snackbar with Retry (`MapStyleController.retry()` bumps an attempt counter the loader is keyed on); it is `false` for a style that downloaded fine
+but uses relative URLs and cannot be inlined. A later theme change leaves the current style up
 until the new one is ready, so the map swaps once; MapLibre keeps the camera across the swap but
 re-adds every layer.
 
@@ -232,8 +288,10 @@ mid-flight, the route staleness checks compare coordinates, not destinations. Th
 separate from `NavigationViewModel` and activity-scoped, so keystrokes never recompose the map and
 the query survives rotation. Its pipeline is `merge(query.debounce(400), submits).collectLatest {}`:
 a newer query cancels the running request on the wire (`PhotonGeocoder` wraps `Call.enqueue` in
-`suspendCancellableCoroutine`). Inside `runSearch`, `CancellationException` **must be rethrown**, not
-swallowed by `runCatching`, or superseded requests show phantom errors. Picking a result calls
+`suspendCancellableCoroutine`). Inside `runSearch`, `CancellationException` **must be rethrown**, not swallowed by `runCatching`, or
+superseded requests show phantom errors. A query dropping below `MIN_QUERY_LENGTH` (or `reset()`)
+emits on a `clears` flow merged into the same pipeline, so the request in flight is cancelled at
+once rather than completing after the 400 ms debounce and repopulating results the user abandoned. Picking a result calls
 `NavigationViewModel.selectDestination(Destination.of(place))`, the same path as a long-press;
 `Destination` carries the optional name/address that `DestinationSheet` shows instead of
 "Dropped pin" + coordinates. While the query is shorter than `MIN_QUERY_LENGTH` the screen lists
@@ -260,7 +318,10 @@ mute/unmute and re-point the TTS voice, `NavigationViewModel` collects it to re-
 route preview, and `NavigationScreen` reads it for units formatting. Writes only go through the
 setters — including Ferrostar's own mute button, whose `toggleMute()` is overridden to write
 `voiceEnabled` instead of flipping the observer, so the button, the settings switch and the stored
-value cannot diverge. `settings/Settings.kt` is pure and unit-tested; `NavSettings` is Android-only.
+value cannot diverge. `settings/Settings.kt` is pure and unit-tested; `NavSettings` is Android-only and its `load` only
+reads the raw preferences into a `StoredSettings`: the per-key fallbacks and the migrations (a
+guidance language Valhalla dropped, a retired routing profile such as `motorcycle`, an unknown enum
+name) are `Settings.restore`, pure and tested.
 
 **App language.** `Settings.uiLanguageTag` (`null` = device language) is the interface language,
 independent of the guidance language. The offered list is `settings/UiLanguage.kt` (pure:
@@ -290,7 +351,7 @@ generated with material3's HCT solver from the seed `LocationBlue` so that `prim
 changes, regenerate every tone together, and keep `values(-night)/themes.xml` `windowBackground`
 on the new `surface`),
 `SystemBarGlyphs` (light glyphs when dark, both bars, no special cases: every surface that can sit
-under a bar follows the same flag), and `viewModel.onDarkThemeChanged` for the basemap. The manifest
+under a bar follows the same flag), and `graph.mapStyle.onDarkThemeChanged` for the basemap. The manifest
 lists `uiMode` in `configChanges` so a system or per-app night-mode change does not recreate the
 Activity and tear down the MapLibre view; Compose re-reads `LocalConfiguration` instead.
 `NavSettings.setThemeMode` also calls `settings/AppNightMode.kt` (`UiModeManager.setApplicationNightMode`,
@@ -313,12 +374,17 @@ the device locale with no injection point, so `NavigationScreen` supplies `withI
 `withProgressView` that call the same public `InstructionsView` / `TripProgressView` with the
 `LocalizedDistanceFormatter` from `rememberDistanceFormatter(settings)` (`ui/Formatters.kt`: units
 from `Settings.units`, locale from the *guidance* language so the banner's numbers match its text;
-`rememberClockTimeFormatter` next to it is the arrival clock). The same formatter and Ferrostar's
-`LocalizedDurationFormatter` are handed to `RoutePreviewSheetContent`, `ArrivalSheetContent` and (via
-`MainActivity`) the search results, so every distance and duration in the app agrees; the app has no
-formatting logic of its own, which is why `ferrostar-ui-formatters` is a direct dependency.
-Ferrostar's `Route` only has per-step durations; `navigation/Routes.kt` adds `Route.durationSeconds`
-for the trip total.
+`rememberClockTimeFormatter` next to it is the arrival clock). The same formatter is handed to
+`RoutePreviewSheetContent`, `ArrivalSheetContent` and (via `MainActivity`) the search results, so
+every distance in the app agrees. **Durations are not Ferrostar's**: its `LocalizedDurationFormatter`
+writes English unit letters whatever the locale, and "25 m" next to "12 km" reads as metres, so
+`rememberDurationFormatter` builds an `IcuDurationFormatter` (ICU `MeasureFormat`, guidance locale)
+over the pure `durationParts` split (rounded to the minute, never "0 min"; unit-tested). The
+arrival clock in the preview is read from a `produceState` ticking every 30 s, not from
+composition. The `NavigationViewComponentBuilder` is `remember`ed per formatter: it is a data class
+compared by its lambdas, and a fresh one per recomposition would invalidate Ferrostar's view on
+every fix. Ferrostar's `Route` only has per-step durations; `navigation/Routes.kt` adds
+`Route.durationSeconds` for the trip total.
 
 **Rerouting** is configured in `AppGraph`: `deviationHandler` asks for new routes to the remaining
 waypoints, `alternativeRouteProcessor` swaps the first one in via `core.replaceRoute` (the session
@@ -340,11 +406,21 @@ completely off route the core blanks the instruction banner; `ReroutingBanner`
 (`ui/ReroutingBanner.kt`, `NavigationUiState.isRerouting()`) fills the slot, and the ViewModel speaks
 "Rerouting" once per departure through `VoiceGuidance.announceRerouting()` (guidance language, via
 the same observer so mute applies; `navigation/RerouteAnnouncer.kt` is the pure rising-edge + 10 s
-gap policy, unit-tested). Because `replaceRoute` stops speech and clears the queue, the processor
-defers the swap by `VoiceGuidance.remainingAnnouncementMs()` (≤ 1.5 s) when the word is still
-being spoken. "Simulate driving" cannot exercise any of this: the simulated provider follows the
+gap policy, unit-tested). Because `replaceRoute` stops speech and clears the queue, the processor defers the swap by
+`VoiceGuidance.remainingAnnouncementMs()` (≤ 1.5 s; the arithmetic is `voice/AnnouncementTimer`,
+pure, volatile field because the writer and the reader are on different threads) when the word is
+still being spoken. The deferred swap is one main-thread `pendingRouteSwap` job in `AppGraph`: a newer
+reroute supersedes it, and a collector on `core.state` cancels it when the trip ends, so a route
+fetched for one trip cannot be swapped into the next. "Simulate driving" cannot exercise any of this: the simulated provider follows the
 route exactly; use a real drive or the emulator's Extended controls > Location > Routes with a
 track that leaves the planned route.
+
+**External requests.** `geo:` and `google.navigation:` links (manifest intent filters on
+`MainActivity`, which is `singleTask` so they reach the running instance through `onNewIntent`) are
+parsed by `navigation/GeoIntent.kt` (pure, unit-tested) into a `GeoTarget`: a `Place` (coordinate,
+optional label; `q=` wins over the path, `0,0` is a placeholder) goes through `onPlacePicked` like
+a search result, a `Query` seeds `SearchViewModel` and opens the search. `MainActivity` parks the
+target in a `MutableStateFlow` until the composition takes it.
 
 **Voice guidance** is Ferrostar's `AndroidTtsObserver`, wrapped in `voice/VoiceGuidance.kt`, which
 adds the two things Ferrostar leaves to the app: the mute preference is persisted to
@@ -361,8 +437,8 @@ engine is bound on `selectDestination`/`startNavigation` and released in `stopNa
 
 **Location** is chosen once at startup in `AppGraph`: `location/FusedLocationProvider.create(context)`
 returns Google Play's fused location provider (`play-services-location`, the one proprietary
-dependency; no `foss` flavor yet) when `GoogleApiAvailability` reports Play Services usable, and
-`null` otherwise, in which case the platform `LocationManager` via Ferrostar's
+dependency, `full` flavour only; the `foss` flavour's copy of the file always returns `null`) when
+`GoogleApiAvailability` reports Play Services usable, and `null` otherwise, in which case the platform `LocationManager` via Ferrostar's
 `AndroidLocationProvider` is used. Both implement Ferrostar's `NavigationLocationProviding` and
 yield `android.location.Location`, so nothing downstream knows which one is active; one `Location`
 logcat line says so. The live provider is wrapped in a `NavigationLocationProvider` alongside a
@@ -370,8 +446,11 @@ logcat line says so. The live provider is wrapped in a `NavigationLocationProvid
 switches on. `FusedLocationProvider` is Android/GMS-bound and untested like the compass; it emits
 the last known fix first (as `AndroidLocationProvider` does, so the puck shows at once), carries
 `@SuppressLint("MissingPermission")` because the ViewModel and `startNavigation` only reach it
-after `hasLocationPermission` (Lint's `MissingPermission` is an error), and swallows a late
-`SecurityException` into `null`. Guidance survives backgrounding through Ferrostar's
+after `hasLocationPermission` (Lint's `MissingPermission` is an error), and turns a late
+`SecurityException` into `null` (last fix) or the end of the flow (updates). The compass listener
+sizes its rotation-vector array from the event: `getRotationMatrixFromVector` decides by the
+destination length whether the fourth quaternion component is present, so a 3-value sensor given a
+4-element array yields a wrong azimuth. Guidance survives backgrounding through Ferrostar's
 `FerrostarForegroundService`, declared in the manifest.
 
 **Domain code is kept UI-free on purpose** — the plan is to move it into a Kotlin Multiplatform
@@ -388,11 +467,27 @@ config logic out of composables.
   `Waypoint`, ...). Those types are the app's domain model; don't wrap them without reason.
 - Unit tests are plain JUnit 4 on the JVM and cover the pure pieces (see `app/src/test`;
   `SearchViewModel` is driven with a scripted `Geocoder`, `StandardTestDispatcher` +
-  `Dispatchers.setMain`). `unitTests.isReturnDefaultValues`
+  `Dispatchers.setMain`). The HTTP layer is tested against OkHttp's `mockwebserver3`
+  (`MapStyleLoaderTest`, `PhotonGeocoderTransportTest`, which also covers `ClientIdInterceptor`);
+  `ValhallaRouteProvider.getRoutes` cannot be, because Ferrostar's `RouteAdapter` is native.
+  `LibertyStyleTest` runs both style patches over a snapshot of the real OpenFreeMap "liberty"
+  style (`src/test/resources/openfreemap-liberty.json`; refresh it when the upstream style changes)
+  so an upstream change of shape cannot leave the dark map half light unnoticed. `unitTests.isReturnDefaultValues`
   is on, so `android.util.Log` is a no-op in tests. Pin the locale when testing anything that goes
   through `String.format`, and pass an explicit `Locale` to `SpokenLanguage` rather than relying on
   the ambient default. The `NavigationControllerConfigs` builders call uniffi functions (native) and
   cannot run on the JVM; only the `TravelMode` mapping is tested.
+- Every Kotlin source starts with the two SPDX header lines (`GPL-3.0-or-later`, see any file).
+  Source and privacy links live in the menu drawer (`MenuDrawer.kt`), because a GPL binary carries
+  its offer of source with it; `PRIVACY.md` must keep describing exactly what the app sends
+  (the location permission rationale string is its summary).
+- Accessibility: a Settings row with a switch is `Modifier.toggleable(role = Role.Switch)` with
+  `onCheckedChange = null` on the `Switch` (one control per row for TalkBack), picker rows are
+  `clickable(role = Role.Button)`; a row managed by long-press also has a visible `ic_more_vert`
+  button and an `onLongClickLabel` (`PlaceRows.kt`); section headers carry `heading()`;
+  `ReroutingBanner` is an assertive live region; controls in the preview sheet keep a 48 dp target
+  (`heightIn` on the segments, `minimumInteractiveComponentSize` on the chips). British spelling in
+  the base strings.
 - All user-facing strings go through `res/values/strings.xml` **and every translation**
   (`values-de`, `values-es`, `values-fr`, `values-it`): Lint's `MissingTranslation` is an error and
   CI runs `lintDebug`, so a new string needs all five files (or `translatable="false"`).

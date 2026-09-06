@@ -1,0 +1,5 @@
+Vialix is turn-by-turn navigation built only on open data and open-source components: OpenStreetMap data, MapLibre rendering, Valhalla routing, Photon search and the Ferrostar navigation core.
+
+Search for a place or long-press the map, compare the alternative routes, and drive, cycle or walk with a manoeuvre banner, spoken instructions and automatic rerouting. Home, Work and recent destinations are kept on the phone; nothing is tracked, there are no accounts and no ads.
+
+The routing and search servers are configurable, so the app works against a self-hosted Valhalla or Photon instance as well as the public ones.
