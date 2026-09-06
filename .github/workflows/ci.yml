@@ -18,22 +18,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The committed wrapper JAR must be one Gradle published.
-      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/wrapper-validation@v6
 
       # gradle/gradle-daemon-jvm.properties pins the daemon to a Java 25 toolchain; this is it.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           packages: platforms;android-36 build-tools;36.0.0 platform-tools
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       # Formatting gate; the rules are in .editorconfig. `ktlint --format` fixes most findings locally.
       - name: ktlint
@@ -53,7 +53,7 @@ jobs:
       - name: Release builds (R8 + resource shrinking, unsigned)
         run: ./gradlew --no-daemon assembleFullRelease assembleFossRelease
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: reports
@@ -62,13 +62,13 @@ jobs:
             app/build/test-results/
           if-no-files-found: ignore
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: app-debug
           path: app/build/outputs/apk/*/debug/*.apk
 
       # Without these a crash report from an R8 build cannot be read back.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-mapping
           path: app/build/outputs/mapping/*/mapping.txt
