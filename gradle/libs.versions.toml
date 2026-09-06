@@ -4,7 +4,7 @@
 # on the version Ferrostar links against, or the UI modules will fail at runtime.
 
 [versions]
-agp = "9.0.1"
+agp = "9.4.0"
 kotlin = "2.3.20"
 composeBom = "2026.02.01"
 activityCompose = "1.13.0"
