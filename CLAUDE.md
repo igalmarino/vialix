@@ -30,11 +30,12 @@ Requires an Android SDK with `platforms;android-36` + `build-tools;36.0.0`. The 
 installs these and exports `ANDROID_HOME=/opt/android-sdk`; outside it, copy
 `local.properties.example` to `local.properties` and set `sdk.dir`.
 
-**Which JDK the build runs on.** Gradle 9.2.1 supports Java 25 at most; on JDK 26 the VS Code
-Gradle/Java extensions report an incompatible pair and AGP's `JdkImageTransform` fails (`jlink`
-error on `core-for-system-modules.jar`). `gradle/gradle-daemon-jvm.properties` therefore pins the
-daemon with `toolchainVersion=25`, so `./gradlew` selects a Java 25 toolchain by auto-detection no
-matter what `java`/`JAVA_HOME` point at. Building on a machine without a JDK 25 installed fails
+**Which JDK the build runs on.** `gradle/gradle-daemon-jvm.properties` pins the daemon with
+`toolchainVersion=25`, so `./gradlew` selects a Java 25 toolchain by auto-detection no matter what
+`java`/`JAVA_HOME` point at. That is the JDK CI and the dev container use; with the Gradle versions
+before 9.7 a JDK 26 made the VS Code Gradle/Java extensions report an incompatible pair and AGP's
+`JdkImageTransform` fail (`jlink` error on `core-for-system-modules.jar`), and the pin keeps the
+build off whatever happens to be installed. Building on a machine without a JDK 25 installed fails
 with a toolchain-not-found message; install one (in the dev container it is
 `/usr/lib/jvm/msopenjdk-current`) rather than deleting the pin.
 
@@ -461,7 +462,10 @@ config logic out of composables.
 
 - Dependency versions live only in `gradle/libs.versions.toml`. AGP, Kotlin, Compose and
   especially `maplibre-compose` intentionally mirror what Ferrostar 0.54.0 is built against —
-  bumping `maplibreCompose` off Ferrostar's version breaks the UI modules at runtime.
+  bumping `maplibreCompose` off Ferrostar's version breaks the UI modules at runtime. Dependabot
+  ignores all of them (`.github/dependabot.yml`); they move by hand, together, when Ferrostar does.
+  Newer AndroidX releases can drag Compose 1.12+ in transitively, which needs AGP 9.1+: such a
+  Dependabot PR fails `checkFullDebugAarMetadata` and is closed until then.
 - `android.newDsl=false` in `gradle.properties` keeps AGP 9 on the classic DSL, matching Ferrostar.
 - Ferrostar's Rust bindings are imported as `uniffi.ferrostar.*` (`Route`, `GeographicCoordinate`,
   `Waypoint`, ...). Those types are the app's domain model; don't wrap them without reason.

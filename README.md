@@ -20,12 +20,12 @@ route, and a foreground notification so guidance survives backgrounding.
 | Routing | [Valhalla](https://github.com/valhalla/valhalla) via the public FOSSGIS server | Open-source engine; the endpoint is a config value so any Valhalla instance works |
 | Geocoding | [Photon](https://github.com/komoot/photon) via komoot's public instance | Open-source OSM geocoder built for search-as-you-type; endpoint configurable, self-hostable |
 | Location | Google Play fused location when Play Services is present (`full` flavour), Android `LocationManager` otherwise and in the `foss` flavour | Faster, steadier fixes on Play devices; still runs on GMS-free ROMs |
-| Build | Android Gradle Plugin 9.0, Gradle 9.2, Kotlin 2.3, Java 17 bytecode target built on a JDK 25 toolchain, `minSdk` 29 | Same toolchain Ferrostar is tested with; Gradle 9.2 needs Java ≤ 25 |
+| Build | Android Gradle Plugin 9.0, Gradle 9.7, Kotlin 2.3, Java 17 bytecode target built on a JDK 25 toolchain, `minSdk` 29 | Same toolchain Ferrostar is tested with; the Gradle daemon is pinned to JDK 25 |
 
 ## Build and run
 
 Requirements: a JDK 25 toolchain (the Gradle daemon is pinned to it via
-`gradle/gradle-daemon-jvm.properties`, since Gradle 9.2 does not support Java 26) and an
+`gradle/gradle-daemon-jvm.properties`) and an
 Android SDK with platform 36 and build-tools 36.0.0
 (`sdkmanager "platforms;android-36" "build-tools;36.0.0"`).
 
