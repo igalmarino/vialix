@@ -1,15 +1,20 @@
 package com.galmarino.vialix.voice
 
 import android.content.Context
+import android.content.res.Configuration
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import com.galmarino.vialix.R
 import com.galmarino.vialix.settings.Settings
 import com.stadiamaps.ferrostar.core.AndroidTtsObserver
 import com.stadiamaps.ferrostar.core.AndroidTtsStatusListener
 import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import uniffi.ferrostar.SpokenInstruction
 
 /**
  * Spoken turn-by-turn guidance.
@@ -21,7 +26,8 @@ import kotlinx.coroutines.launch
  *
  * Two things Ferrostar deliberately leaves to the app are added here, both driven by the
  * [Settings] flow: whether guidance is muted, and which language the voice speaks (its `onInit`
- * never sets one). The observer only ever *follows* the settings store — Ferrostar's own mute
+ * never sets one). The app also speaks one phrase of its own, "Rerouting" ([announceRerouting]),
+ * through the same observer so that mute, audio focus and ducking apply to it as well. The observer only ever *follows* the settings store — Ferrostar's own mute
  * button writes to the store too (see `NavigationViewModel.toggleMute`), so the button and the
  * settings screen cannot disagree.
  *
@@ -66,6 +72,41 @@ class VoiceGuidance(
         observer.shutdown()
     }
 
+    private var announcementStartedAt: Long? = null
+
+    /**
+     * Says "Rerouting" in the guidance language, queued behind whatever is being spoken. The
+     * phrase is a [SpokenInstruction] like any other, so the observer's mute switch silences it.
+     * Languages the app has no translation for get the English phrase (resource fallback), which
+     * beats silence when the map has just gone blank.
+     */
+    fun announceRerouting() {
+        if (observer.isMuted) return
+        val text = guidanceResources().getString(R.string.rerouting_announcement)
+        announcementStartedAt = SystemClock.elapsedRealtime()
+        observer.onSpokenInstructionTrigger(
+            SpokenInstruction(text = text, ssml = null, triggerDistanceBeforeManeuver = 0.0, utteranceId = UUID.randomUUID()),
+        )
+    }
+
+    /**
+     * How long the phrase started by [announceRerouting] still needs, roughly. `FerrostarCore.replaceRoute`
+     * stops speech and clears the queue, so the reroute processor waits this long before swapping
+     * the route in, or the word is cut off whenever the server answers within a second.
+     */
+    fun remainingAnnouncementMs(): Long {
+        val started = announcementStartedAt ?: return 0
+        return (started + ANNOUNCEMENT_MS - SystemClock.elapsedRealtime()).coerceAtLeast(0)
+    }
+
+    /** The app's strings in the guidance language rather than the interface language. */
+    private fun guidanceResources() =
+        appContext.createConfigurationContext(
+            Configuration(appContext.resources.configuration).apply {
+                setLocale(Locale.forLanguageTag(settings.value.resolvedLanguageTag()))
+            },
+        ).resources
+
     /**
      * Points the bound engine at the guidance language, so the voice matches the language the
      * instruction text was rendered in. A no-op until the engine is up; anything the engine cannot
@@ -99,5 +140,8 @@ class VoiceGuidance(
 
     private companion object {
         const val TAG = "VoiceGuidance"
+
+        /** Generous budget for one or two spoken words, engine start-up included. */
+        const val ANNOUNCEMENT_MS = 1500L
     }
 }

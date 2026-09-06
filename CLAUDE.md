@@ -321,9 +321,30 @@ Ferrostar's `Route` only has per-step durations; `navigation/Routes.kt` adds `Ro
 for the trip total.
 
 **Rerouting** is configured in `AppGraph`: `deviationHandler` asks for new routes to the remaining
-waypoints, `alternativeRouteProcessor` swaps the first one in via `core.replaceRoute`. Thresholds
-for step advance and deviation live in `NavigationControllerConfigs` (`driving()` is also the
-core's default; `cycling()` and `walking()` are passed per trip, see above).
+waypoints, `alternativeRouteProcessor` swaps the first one in via `core.replaceRoute` (the session
+builder remembers the per-trip config, so the single-argument call keeps the cycling/walking
+thresholds). Thresholds for step advance and deviation live in `NavigationControllerConfigs`
+(`driving()` is also the core's default; `cycling()` and `walking()` are passed per trip, see
+above). `RouteDeviationTracking.StaticThreshold` takes the **accuracy gate first, the deviation
+second**: fixes with a worse horizontal accuracy than the gate are skipped and never count as off
+route, so the gate is deliberately wider than the deviation (driving 40 m / 30 m, cycling 30 / 20,
+walking 30 / 25); Ferrostar's demo values (15 m gate, 50 m) skipped most fixes under trees and
+between buildings and a missed turn often never triggered a reroute. The core's own throttles are
+set from `navigation/RerouteTuning.kt`: `minimumTimeBeforeRecalculation` 3 s (counted from the
+*end* of the previous request) and `minimumMovementBeforeRecalculation` 20 m (from where the
+previous request *started*, never cleared on failure), and reroutes go through a second OkHttp
+client with an 8 s call timeout (`ValhallaRouteProvider.rerouteHttpClient`, same pool and
+interceptors; the preview keeps the 15 s one). The core swallows reroute failures after one
+`FerrostarCore` log line, so the provider's `CustomRouteProvider` override logs them too. While
+completely off route the core blanks the instruction banner; `ReroutingBanner`
+(`ui/ReroutingBanner.kt`, `NavigationUiState.isRerouting()`) fills the slot, and the ViewModel speaks
+"Rerouting" once per departure through `VoiceGuidance.announceRerouting()` (guidance language, via
+the same observer so mute applies; `navigation/RerouteAnnouncer.kt` is the pure rising-edge + 10 s
+gap policy, unit-tested). Because `replaceRoute` stops speech and clears the queue, the processor
+defers the swap by `VoiceGuidance.remainingAnnouncementMs()` (≤ 1.5 s) when the word is still
+being spoken. "Simulate driving" cannot exercise any of this: the simulated provider follows the
+route exactly; use a real drive or the emulator's Extended controls > Location > Routes with a
+track that leaves the planned route.
 
 **Voice guidance** is Ferrostar's `AndroidTtsObserver`, wrapped in `voice/VoiceGuidance.kt`, which
 adds the two things Ferrostar leaves to the app: the mute preference is persisted to

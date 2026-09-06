@@ -9,6 +9,10 @@
     <string name="cancel">Cancelar</string>
     <string name="retry">Reintentar</string>
 
+    <!-- Guidance: off route -->
+    <string name="rerouting">Recalculando ruta…</string>
+    <string name="rerouting_announcement">Recalculando ruta</string>
+
     <!-- Arrival card -->
     <string name="arrived_title">Has llegado</string>
     <string name="done">Listo</string>

@@ -7,6 +7,7 @@ import com.stadiamaps.ferrostar.core.AlternativeRouteProcessor
 import com.stadiamaps.ferrostar.core.CorrectiveAction
 import com.stadiamaps.ferrostar.core.FerrostarCore
 import com.stadiamaps.ferrostar.core.RouteDeviationHandler
+import com.stadiamaps.ferrostar.core.isNavigating
 import com.stadiamaps.ferrostar.core.http.HttpClientProvider
 import com.stadiamaps.ferrostar.core.http.OkHttpClientProvider.Companion.toOkHttpClientProvider
 import com.galmarino.vialix.location.CompassHeadingProvider
@@ -20,9 +21,13 @@ import java.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.time.toJavaDuration
 import okhttp3.OkHttpClient
 import com.galmarino.vialix.map.MapStyleLoader
 import com.galmarino.vialix.navigation.NavigationControllerConfigs
+import com.galmarino.vialix.navigation.RerouteTuning
 import com.galmarino.vialix.places.SavedPlacesRepository
 import com.galmarino.vialix.places.SharedPreferencesKeyValueStore
 import com.galmarino.vialix.routing.ClientIdInterceptor
@@ -82,6 +87,11 @@ class AppGraph(context: Context) {
 
     private val httpClient: HttpClientProvider by lazy { okHttpClient.toOkHttpClientProvider() }
 
+    /** Same pool and headers, shorter timeout: see [RerouteTuning.REQUEST_TIMEOUT]. */
+    private val rerouteHttpClient: HttpClientProvider by lazy {
+        okHttpClient.newBuilder().callTimeout(RerouteTuning.REQUEST_TIMEOUT.toJavaDuration()).build().toOkHttpClientProvider()
+    }
+
     /** Forward geocoding for the destination search. */
     val geocoder: Geocoder by lazy { PhotonGeocoder(config.geocoderEndpoint, okHttpClient) }
 
@@ -106,7 +116,7 @@ class AppGraph(context: Context) {
      * directly for the route preview (with alternates); the core calls it for reroutes.
      */
     val routeProvider: ValhallaRouteProvider by lazy {
-        ValhallaRouteProvider(config.valhallaEndpoint, settings.state, httpClient)
+        ValhallaRouteProvider(config.valhallaEndpoint, settings.state, httpClient, rerouteHttpClient)
     }
 
     /** The navigation engine: route requests, route following, deviation detection, rerouting. */
@@ -120,18 +130,35 @@ class AppGraph(context: Context) {
         ).apply {
             spokenInstructionObserver = voiceGuidance.observer
 
+            // How soon the core may ask again after a reroute request, successful or not. The
+            // cooldown runs from the end of the previous request and the movement gate from the
+            // spot where it was started (never cleared on failure), so Ferrostar's 5 s / 50 m
+            // defaults left the user without a route for a long time after one slow request.
+            minimumTimeBeforeRecalculation = RerouteTuning.COOLDOWN
+            minimumMovementBeforeRecalculation = RerouteTuning.MIN_MOVEMENT_METERS
+
             // Off route -> ask the server for a fresh route to the remaining waypoints ...
             deviationHandler = RouteDeviationHandler { _, _, remainingWaypoints ->
                 CorrectiveAction.GetNewRoutes(remainingWaypoints)
             }
-            // ... and swap it in as soon as it arrives.
+            // ... and swap it in as soon as it arrives. `replaceRoute` stops speech and clears the
+            // queue, so if the "Rerouting" announcement is still being spoken the swap waits for it
+            // (at most ~1.5 s, and only when the server answered faster than the word was said).
             alternativeRouteProcessor = AlternativeRouteProcessor { core, routes ->
                 val route = routes.firstOrNull()
                 if (route == null) {
                     Log.w(TAG, "Reroute returned no routes; staying on the current one")
                 } else {
                     Log.i(TAG, "Rerouted: ${route.distance.toInt()} m, ${route.steps.size} steps")
-                    core.replaceRoute(route)
+                    val wait = voiceGuidance.remainingAnnouncementMs()
+                    if (wait <= 0) {
+                        core.replaceRoute(route)
+                    } else {
+                        appScope.launch {
+                            delay(wait)
+                            if (core.state.value.isNavigating()) core.replaceRoute(route)
+                        }
+                    }
                 }
             }
         }

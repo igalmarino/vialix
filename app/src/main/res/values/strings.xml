@@ -11,6 +11,10 @@
     <string name="cancel">Cancel</string>
     <string name="retry">Retry</string>
 
+    <!-- Guidance: off route -->
+    <string name="rerouting">Rerouting…</string>
+    <string name="rerouting_announcement">Rerouting</string>
+
     <!-- Arrival card -->
     <string name="arrived_title">You\'ve arrived</string>
     <string name="done">Done</string>

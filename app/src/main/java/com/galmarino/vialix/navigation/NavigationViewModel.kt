@@ -1,5 +1,6 @@
 package com.galmarino.vialix.navigation
 
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -48,7 +49,9 @@ import com.galmarino.vialix.routing.ValhallaRouteProvider
 import com.galmarino.vialix.search.Geocoder
 import com.galmarino.vialix.settings.NavSettings
 import com.galmarino.vialix.voice.VoiceGuidance
+import uniffi.ferrostar.DeviationKind
 import uniffi.ferrostar.Route
+import uniffi.ferrostar.RouteDeviation
 import uniffi.ferrostar.TripState
 import uniffi.ferrostar.UserLocation
 import uniffi.ferrostar.Waypoint
@@ -130,6 +133,8 @@ class NavigationViewModel(
 
     private val _screenState = MutableStateFlow(ScreenState())
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
+
+    private val rerouteAnnouncer = RerouteAnnouncer()
 
     /** Home/Work and recents, straight from the store. */
     val savedPlaces: StateFlow<SavedPlaces> = savedPlacesRepository.state
@@ -228,6 +233,24 @@ class NavigationViewModel(
                 .distinctUntilChanged()
                 .collect { tripState ->
                     if (tripState is TripState.Complete) onArrived(tripState)
+                }
+        }
+
+        // Off route -> say so once. The core suppresses the instruction banner while the user is
+        // completely off route and asks for a new route by itself; the screen shows "Rerouting…"
+        // from the same state, and this is the spoken counterpart. `OffStepOnRoute` (ahead of the
+        // current step but still on the line) keeps its banner and is not announced.
+        viewModelScope.launch {
+            super.navigationUiState
+                .map { state ->
+                    val deviation = state.routeDeviation
+                    deviation is RouteDeviation.Deviation && deviation.kind is DeviationKind.CompletelyOffRoute
+                }
+                .distinctUntilChanged()
+                .collect { offRoute ->
+                    if (rerouteAnnouncer.onDeviation(offRoute, SystemClock.elapsedRealtime())) {
+                        voiceGuidance.announceRerouting()
+                    }
                 }
         }
 
@@ -398,6 +421,7 @@ class NavigationViewModel(
         // Clears any queued announcement via the core's spoken-instruction observer.
         core.stopNavigation()
         voiceGuidance.shutdown()
+        rerouteAnnouncer.reset()
         _screenState.update { it.copy(activeDestination = null) }
     }
 
