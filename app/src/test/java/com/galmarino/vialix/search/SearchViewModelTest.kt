@@ -111,6 +111,21 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `debounce does not restart a submitted request that is still running`() = runTest(dispatcher) {
+        viewModel.onQueryChanged("Berlin")
+        viewModel.submit()
+        advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 1)
+
+        assertEquals(listOf("Berlin"), geocoder.queries)
+        assertEquals(emptyList<String>(), geocoder.cancelled)
+        assertTrue(viewModel.state.value.isSearching)
+
+        geocoder.complete(listOf(place("Berlin")))
+        advanceUntilIdle()
+        assertEquals("Berlin", viewModel.state.value.searchedQuery)
+    }
+
+    @Test
     fun `submit retries an unchanged query after an error`() = runTest(dispatcher) {
         viewModel.onQueryChanged("Berlin")
         advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 1)

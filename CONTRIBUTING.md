@@ -73,8 +73,27 @@ execution outside the sandbox.
 Versions follow [semantic versioning](https://semver.org). `versionName` is the version;
 `versionCode` goes up by one per release (both in `app/build.gradle.kts`). To release:
 
+Before tagging, exercise the lifecycle paths that JVM tests cannot cover:
+
+- On both a Play Services device/emulator (`full`) and a GMS-free device/emulator (`foss`),
+  deny precise location, grant it, revoke it in system settings while Vialix is paused, and grant it
+  again. Confirm the puck and route preview recover without restarting the process.
+- Turn the system location switch off and on. Confirm the snackbar action opens location settings
+  and updates disappear and resume with the switch.
+- Start guidance, background and restore the app, then complete and dismiss a simulated trip.
+  Confirm the foreground notification, screen-awake state, TTS and location subscriptions stop.
+- Begin assigning Home or Work, then open both coordinate and text directions links. Confirm the
+  favourite is unchanged, the requested destination opens, and changing app language does not
+  replay the consumed link.
+- Disconnect networking during search, route preview and map-style loading, then reconnect and
+  Retry. Confirm stale responses do not replace the current query, destination or theme.
+- Exercise a real drive or emulator route that leaves the planned route; the built-in simulation
+  follows its route exactly and cannot validate rerouting.
+
 1. Move the *Unreleased* entries in `CHANGELOG.md` under the new version and date.
 2. Bump `versionCode` and `versionName`, merge to `main`.
 3. Tag it: `git tag v0.2.0 && git push origin v0.2.0`. The *Release* workflow builds the signed APK
-   (from the `VIALIX_*` repository secrets, see `.github/workflows/release.yml`) and attaches it,
-   with the R8 `mapping.txt`, to a GitHub release.
+   (from all four `VIALIX_*` repository secrets, see `.github/workflows/release.yml`). It rejects
+   a tag that does not equal `v<versionName>`, verifies both APK signatures and embedded versions,
+   then attaches the exact APKs, their SHA-256 checksums and the R8 `mapping.txt` files to the
+   GitHub release. Ordinary CI continues to build unsigned release APKs to exercise R8.

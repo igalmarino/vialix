@@ -71,7 +71,8 @@ route's first point instead), so the guard is the app's. The same freshness test
 origin in `fetchRoute` and "Use my current location" for Home/Work, because the idle location flow
 keeps its last value while the app is in the background. Route requests hold one `routeJob`: a new
 request (Retry, a profile switch, a new pin) cancels the one in flight, so a slow reply cannot land on
-top of a newer one; the coordinate comparison (`isSelected`) remains as the second guard.
+top of a newer one; a monotonically increasing request generation and the destination coordinate
+guard publication when cancellation loses a race with delivery.
 On Android 13+ the `POST_NOTIFICATIONS` permission for the foreground-service notification is
 requested when Start is tapped (`NavigationScreen`), not alongside the location dialog at first
 launch; guidance starts whatever the answer.
@@ -118,9 +119,12 @@ request per collector, so the ViewModel's `_location` is then fed from Ferrostar
 (`LocationSource.GUIDANCE`) instead of the provider; that also keeps it current for the moment the
 trip ends. The provider flow has a `.catch`: a permission revoked while the process lives ends the
 fused flow (`FusedLocationProvider` closes it) or makes the platform one throw, and neither may
-take the app down. `KeepScreenOnDisposableEffect` is likewise applied only while navigating.
-Decisions in the ViewModel ("are we navigating?") read `core.state.value.isNavigating()`, never the
-derived `navigationUiState.value`, which is `WhileSubscribed` and frozen when nothing collects it.
+take the app down. Permission is reconciled on every resume in both directions; revocation clears
+the cached fix, cancels preview work, stops active guidance and leaves the preview retryable once
+permission returns. Asynchronous fused-provider registration failures also close the flow.
+`KeepScreenOnDisposableEffect` is applied only while navigating. Decisions in the ViewModel
+("are we navigating?") read `core.state.value.isNavigating()`, never the derived
+`navigationUiState.value`, which is `WhileSubscribed` and frozen when nothing collects it.
 `onCleared()` releases the TTS engine and switches simulation off when no trip is running.
 
 **Errors shown to the user never carry exception text** (an OkHttp message can include the endpoint
@@ -210,8 +214,9 @@ POI patch (`NavConfig.mapStyleUrlFor(dark)` / `derivesNightStyle(dark)`, both pu
 its collector loads the matching style whenever the flag changes (`collectLatest`, so a flip
 mid-download cancels it). The style URL is remote, so the patches are
 applied at runtime: `MapStyleLoader.load(url, night)` downloads the style (remembering the last
-body, so a theme toggle re-patches without a second download), `PoiLabelStylePatch` (pure,
-unit-tested; `text-max-width` 8, `text-letter-spacing` 0 on POI symbol layers) then
+successfully patched body, so a theme toggle re-patches without a second download while malformed
+or interrupted responses remain retryable), `PoiLabelStylePatch` (pure, unit-tested;
+`text-max-width` 8, `text-letter-spacing` 0 on POI symbol layers) then
 `NightStylePatch` edit it, and `map/MapStyleController` (app-scoped, owned by `AppGraph`; the
 ViewModel knows nothing about styles or the theme) publishes a `MapStyleState`: `Loading` (the screen
 shows an inline style with only a theme-coloured background, `emptyStyleJson(dark)`, so the map is
@@ -229,12 +234,14 @@ re-adds every layer.
 `buildReverseUrl`, which swaps Photon's `/api` for `/reverse`; response parsing a pure
 `PhotonResponseParser`; all unit-tested), `SearchViewModel` the typeahead. `NavigationViewModel`
 uses `reverse` to label long-pressed pins (`resolveAddress`, best effort: the pin keeps saying
-"Dropped pin" on failure); because `Destination` is compared by value and the label changes
-mid-flight, the route staleness checks compare coordinates, not destinations. The ViewModel is
+"Dropped pin" on failure); the one reverse-lookup job is cancelled when its pin changes or is
+dismissed. The ViewModel is
 separate from `NavigationViewModel` and activity-scoped, so keystrokes never recompose the map and
 the query survives rotation. Its pipeline is `merge(query.debounce(400), submits).collectLatest {}`:
 a newer query cancels the running request on the wire (`PhotonGeocoder` wraps `Call.enqueue` in
-`suspendCancellableCoroutine`). Inside `runSearch`, `CancellationException` **must be rethrown**, not swallowed by `runCatching`, or
+`suspendCancellableCoroutine`), while the delayed debounce echo of a submitted query is filtered
+before `collectLatest` so it cannot restart the same request. Inside `runSearch`,
+`CancellationException` **must be rethrown**, not swallowed by `runCatching`, or
 superseded requests show phantom errors. A query dropping below `MIN_QUERY_LENGTH` (or `reset()`)
 emits on a `clears` flow merged into the same pipeline, so the request in flight is cancelled at
 once rather than completing after the 400 ms debounce and repopulating results the user abandoned. Picking a result calls
@@ -364,9 +371,12 @@ track that leaves the planned route.
 **External requests.** `geo:` and `google.navigation:` links (manifest intent filters on
 `MainActivity`, which is `singleTask` so they reach the running instance through `onNewIntent`) are
 parsed by `navigation/GeoIntent.kt` (pure, unit-tested) into a `GeoTarget`: a `Place` (coordinate,
-optional label; `q=` wins over the path, `0,0` is a placeholder) goes through `onPlacePicked` like
-a search result, a `Query` seeds `SearchViewModel` and opens the search. `MainActivity` parks the
-target in a `MutableStateFlow` until the composition takes it.
+optional label; `q=` wins over the path, `0,0` is a placeholder) goes directly through
+`selectDestination`, while a `Query` resets and seeds `SearchViewModel` before opening search.
+Both cancel a pending Home/Work assignment first. `MainActivity` parks the target in a
+`MutableStateFlow` until the composition takes it and saves the source URI only while it remains
+pending. Consumed launch intents are not parsed again after an Activity recreation; `onNewIntent`
+still treats every newly delivered link as a new request.
 
 **Voice guidance** is Ferrostar's `AndroidTtsObserver`, wrapped in `voice/VoiceGuidance.kt`, which
 adds the two things Ferrostar leaves to the app: the mute preference is persisted to

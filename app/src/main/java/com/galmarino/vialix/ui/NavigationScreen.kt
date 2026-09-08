@@ -192,36 +192,41 @@ fun NavigationScreen(
     fun isGranted() = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
 
-    fun grant() {
-        permission = LocationPermission.Granted
-        viewModel.onLocationPermissionGranted()
+    fun updatePermission(granted: Boolean) {
+        viewModel.onLocationPermissionChanged(granted)
+        if (granted) {
+            permission = LocationPermission.Granted
+        } else {
+            // After repeated denials Android answers without showing a dialog; asking again
+            // would then be a button that does nothing.
+            val canAskAgain =
+                activity != null &&
+                    ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+            permission = if (canAskAgain) LocationPermission.Denied else LocationPermission.DeniedPermanently
+        }
     }
 
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-            if (granted[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-                grant()
-            } else {
-                // After repeated denials Android answers without showing a dialog; asking again
-                // would then be a button that does nothing.
-                val canAskAgain =
-                    activity != null &&
-                        ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
-                permission = if (canAskAgain) LocationPermission.Denied else LocationPermission.DeniedPermanently
-            }
+            updatePermission(granted[Manifest.permission.ACCESS_FINE_LOCATION] == true)
         }
 
     LaunchedEffect(Unit) {
         if (isGranted()) {
-            grant()
+            updatePermission(true)
         } else if (permission == LocationPermission.Unknown) {
             launcher.launch(requiredPermissions())
         }
     }
 
-    // Back from the system settings page (or wherever) with the permission granted meanwhile.
+    // Reconcile grants and revocations made in system settings while the app was paused.
     LifecycleResumeEffect(Unit) {
-        if (permission != LocationPermission.Granted && isGranted()) grant()
+        val granted = isGranted()
+        if (granted && permission != LocationPermission.Granted) {
+            updatePermission(true)
+        } else if (!granted && permission == LocationPermission.Granted) {
+            updatePermission(false)
+        }
         onPauseOrDispose {}
     }
 
