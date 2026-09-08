@@ -18,7 +18,7 @@ if [ ! -x "$SDKMANAGER" ]; then
 fi
 
 # Volume-mounted dirs are created by Docker as root on first use.
-sudo chown -R "$(id -u):$(id -g)" "$HOME/.gradle" "$HOME/.claude" "$HOME/.config/gh" 2>/dev/null || true
+sudo chown -R "$(id -u):$(id -g)" "$HOME/.gradle" "$HOME/.claude" "$HOME/.codex" "$HOME/.config/gh" 2>/dev/null || true
 
 yes | "$SDKMANAGER" --licenses > /dev/null || true
 "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"

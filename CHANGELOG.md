@@ -6,6 +6,7 @@ and the project uses [semantic versioning](https://semver.org).
 ## [Unreleased]
 
 ### Added
+- Shared instructions for Claude Code and Codex, with both agents provisioned in the dev container.
 - Open `geo:` links and "Directions" requests from other apps: a coordinate previews the route,
   free text opens the search.
 - A snackbar with a *Turn on* action when the system location switch is off.
