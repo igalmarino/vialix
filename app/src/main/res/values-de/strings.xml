@@ -19,7 +19,7 @@
 
     <!-- Map controls -->
     <string name="menu">Menü</string>
-    <string name="search_hint">Suchen oder Karte lange drücken</string>
+    <string name="search_hint">Wohin?</string>
     <string name="voice_search">Sprachsuche</string>
     <string name="voice_search_prompt">Wohin möchtest du?</string>
     <string name="my_location_free">Auf meinen Standort zentrieren</string>
@@ -99,4 +99,9 @@
     <string name="menu_privacy">Datenschutzerklärung</string>
     <string name="menu_licenses">Open-Source-Lizenzen</string>
     <string name="licenses_note">Vialix ist freie Software unter der GNU General Public License v3.0 oder später. Es baut auf den folgenden Komponenten auf; tippe auf eine, um ihr Projekt zu besuchen. Kartendaten © OpenStreetMap-Mitwirkende (ODbL).</string>
+    <string name="saved_places_header">Gespeicherte Orte</string>
+    <string name="recent_empty">Ziele erscheinen hier, nachdem du die Navigation gestartet hast.</string>
+    <string name="cancel_route_preview">Routenvorschau abbrechen</string>
+    <string name="search_no_results_help">Versuche einen anderen Ortsnamen oder eine vollständigere Adresse.</string>
+    <string name="search_loading">Orte werden gesucht…</string>
 </resources>

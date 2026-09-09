@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.galmarino.vialix.AppGraph
 import com.galmarino.vialix.RequestFailure
+import com.galmarino.vialix.navigation.distanceMeters
 import com.galmarino.vialix.settings.Settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
@@ -60,6 +62,9 @@ class SearchViewModel(
     private val query = MutableStateFlow("")
     private val submits = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
+    /** A submitted query whose delayed debounce echo must not restart the request in flight. */
+    private var submittedQuery: String? = null
+
     /** The query dropped below the minimum length: cancel whatever is in flight, now, not after the debounce. */
     private val clears = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -72,12 +77,15 @@ class SearchViewModel(
                 query.debounce(DEBOUNCE_MS).map { Request(it, forced = false) },
                 submits.map { Request(query.value, forced = true) },
                 clears.map { Request("", forced = false) },
-            ).collectLatest { runSearch(it) }
+            )
+                .filter { request -> request.forced || request.query.trim() != submittedQuery }
+                .collectLatest { runSearch(it) }
         }
     }
 
     fun onQueryChanged(text: String) {
         query.value = text
+        if (text.trim() != submittedQuery) submittedQuery = null
         if (text.trim().length < MIN_QUERY_LENGTH) {
             // Too short to search: show the hint right away rather than after the debounce, and
             // make sure a request still running for the previous text cannot repopulate the results.
@@ -90,11 +98,13 @@ class SearchViewModel(
 
     /** Keyboard "search" action: skip the debounce, and retry even if the text has not changed. */
     fun submit() {
+        submittedQuery = query.value.trim()
         submits.tryEmit(Unit)
     }
 
     /** Called once a place has been picked, so the next search starts clean. */
     fun reset() {
+        submittedQuery = null
         query.value = ""
         _state.value = SearchState()
         clears.tryEmit(Unit)
@@ -110,7 +120,9 @@ class SearchViewModel(
         try {
             val bias = location.value?.coordinates
             val places = geocoder.search(q, bias, settings.value.resolvedLanguageTag())
-            _state.update { it.copy(results = places, searchedQuery = q, isSearching = false) }
+            val origin = location.value?.coordinates
+            val results = if (origin != null) places.sortedBy { distanceMeters(origin, it.coordinate) } else places
+            _state.update { it.copy(results = results, searchedQuery = q, isSearching = false) }
         } catch (e: CancellationException) {
             // A newer query superseded this one; collectLatest cancelled us. Not an error.
             throw e

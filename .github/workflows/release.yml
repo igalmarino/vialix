@@ -3,7 +3,7 @@ name: Release
 # Pushing a tag such as v0.2.0 builds the signed release APK and attaches it, with the R8 mapping
 # file, to a GitHub release of the same name. Signing needs four repository secrets:
 # VIALIX_KEYSTORE_BASE64 (the .jks, base64-encoded), VIALIX_STORE_PASSWORD, VIALIX_KEY_ALIAS,
-# VIALIX_KEY_PASSWORD. Without them the APK is built unsigned and the step says so.
+# VIALIX_KEY_PASSWORD. A missing secret or version/tag mismatch stops the release.
 on:
   push:
     tags: ['v*']
@@ -27,15 +27,26 @@ jobs:
           packages: platforms;android-36 build-tools;36.0.0 platform-tools
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Decode the signing keystore
+      - name: Validate release inputs
         env:
           KEYSTORE_BASE64: ${{ secrets.VIALIX_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.VIALIX_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.VIALIX_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.VIALIX_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::warning::No VIALIX_KEYSTORE_BASE64 secret; the release APK will be unsigned."
-            exit 0
+          set -euo pipefail
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Required release secret $name is missing."
+              exit 1
+            fi
+          done
+          version_name="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts)"
+          if [ -z "$version_name" ] || [ "$GITHUB_REF_NAME" != "v$version_name" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match versionName $version_name."
+            exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
 
       - name: Tests, lint, release build
         env:
@@ -45,6 +56,23 @@ jobs:
           VIALIX_KEY_PASSWORD: ${{ secrets.VIALIX_KEY_PASSWORD }}
         run: ./gradlew --no-daemon testFullDebugUnitTest lintFullDebug lintFossDebug assembleFullRelease assembleFossRelease
 
+      - name: Verify release APKs
+        run: |
+          set -euo pipefail
+          full_apk=app/build/outputs/apk/full/release/app-full-release.apk
+          foss_apk=app/build/outputs/apk/foss/release/app-foss-release.apk
+          version_name="${GITHUB_REF_NAME#v}"
+          for apk in "$full_apk" "$foss_apk"; do
+            test -f "$apk"
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
+            badging="$("$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk")"
+            if [[ "$badging" != *"versionName='$version_name'"* ]]; then
+              echo "::error::$apk does not contain versionName $version_name."
+              exit 1
+            fi
+          done
+          sha256sum "$full_apk" "$foss_apk" > SHA256SUMS
+
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -52,7 +80,7 @@ jobs:
           cp app/build/outputs/mapping/fullRelease/mapping.txt mapping-full.txt
           cp app/build/outputs/mapping/fossRelease/mapping.txt mapping-foss.txt
           gh release create "$GITHUB_REF_NAME" \
-            app/build/outputs/apk/full/release/*.apk \
-            app/build/outputs/apk/foss/release/*.apk \
-            mapping-full.txt mapping-foss.txt \
+            app/build/outputs/apk/full/release/app-full-release.apk \
+            app/build/outputs/apk/foss/release/app-foss-release.apk \
+            mapping-full.txt mapping-foss.txt SHA256SUMS \
             --title "$GITHUB_REF_NAME" --generate-notes

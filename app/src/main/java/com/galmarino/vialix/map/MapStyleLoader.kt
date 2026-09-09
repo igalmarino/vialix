@@ -30,7 +30,7 @@ class MapStyleLoader(private val client: OkHttpClient) {
     suspend fun load(styleUrl: String, night: Boolean): MapStyleState {
         val body =
             lastDownload?.takeIf { it.first == styleUrl }?.second
-                ?: fetch(styleUrl)?.also { lastDownload = styleUrl to it }
+                ?: fetch(styleUrl)
                 ?: return MapStyleState.Unavailable(styleUrl, downloadFailed = true)
         if (!PoiLabelStylePatch.canBeInlined(body)) {
             Log.i(TAG, "Style uses relative URLs; loading it unpatched")
@@ -38,6 +38,7 @@ class MapStyleLoader(private val client: OkHttpClient) {
         }
         return try {
             val patched = PoiLabelStylePatch.apply(body)
+            lastDownload = styleUrl to body
             MapStyleState.Patched(if (night) NightStylePatch.apply(patched) else patched)
         } catch (e: JSONException) {
             Log.w(TAG, "Style is not valid JSON; loading it unpatched", e)
@@ -57,9 +58,18 @@ class MapStyleLoader(private val client: OkHttpClient) {
                 }
 
                 override fun onResponse(call: Call, response: Response) {
-                    response.use {
-                        if (!it.isSuccessful) Log.w(TAG, "Map style download failed: HTTP ${it.code}")
-                        continuation.resume(if (it.isSuccessful) it.body.string() else null)
+                    val body =
+                        try {
+                            response.use {
+                                if (!it.isSuccessful) Log.w(TAG, "Map style download failed: HTTP ${it.code}")
+                                if (it.isSuccessful) it.body.string() else null
+                            }
+                        } catch (e: IOException) {
+                            Log.w(TAG, "Could not read map style", e)
+                            null
+                        }
+                    if (continuation.isActive) {
+                        continuation.resume(body)
                     }
                 }
             },
