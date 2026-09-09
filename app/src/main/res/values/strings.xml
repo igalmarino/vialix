@@ -21,7 +21,7 @@
 
     <!-- Map controls -->
     <string name="menu">Menu</string>
-    <string name="search_hint">Search or long-press map</string>
+    <string name="search_hint">Where to?</string>
     <string name="voice_search">Voice search</string>
     <string name="voice_search_prompt">Where do you want to go?</string>
     <string name="my_location_free">Centre on my location</string>
@@ -70,8 +70,8 @@
     <string name="setting_voice_guidance_summary">Speak manoeuvres while navigating</string>
     <string name="setting_routing_profile">Profile</string>
     <string name="profile_car">Car</string>
-    <string name="profile_bicycle">Bicycle</string>
-    <string name="profile_walking">Walking</string>
+    <string name="profile_bicycle">Cycle</string>
+    <string name="profile_walking">Walk</string>
     <string name="setting_units">Units</string>
     <string name="units_metric">Kilometres</string>
     <string name="units_imperial">Miles</string>
@@ -101,4 +101,9 @@
     <string name="menu_privacy">Privacy policy</string>
     <string name="menu_licenses">Open-source licences</string>
     <string name="licenses_note">Vialix is free software under the GNU General Public License v3.0 or later. It is built on the components below; tap one to visit its project. Map data © OpenStreetMap contributors (ODbL).</string>
+    <string name="saved_places_header">Saved places</string>
+    <string name="recent_empty">Destinations appear here after you start navigation.</string>
+    <string name="cancel_route_preview">Cancel route preview</string>
+    <string name="search_no_results_help">Try a different place name or a more complete address.</string>
+    <string name="search_loading">Searching for places…</string>
 </resources>

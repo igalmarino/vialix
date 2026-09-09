@@ -84,6 +84,50 @@ class SearchViewModelTest {
     }
 
     @Test
+    fun `results use the latest location when the response arrives`() = runTest(dispatcher) {
+        val west = GeographicCoordinate(lat = 0.0, lng = 0.0)
+        val east = GeographicCoordinate(lat = 0.0, lng = 1.0)
+        val nearWest = place("West").copy(coordinate = west)
+        val nearEast = place("East").copy(coordinate = east)
+        location.value = UserLocation(west, 5.0, null, java.time.Instant.EPOCH, null)
+        viewModel.onQueryChanged("Station")
+        advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 1)
+
+        location.value = UserLocation(east, 5.0, null, java.time.Instant.EPOCH, null)
+        geocoder.complete(listOf(nearWest, nearEast))
+        advanceUntilIdle()
+
+        assertEquals(west, geocoder.biases.single())
+        assertEquals(listOf(nearEast, nearWest), viewModel.state.value.results)
+    }
+
+    @Test
+    fun `without a location results preserve the geocoder order`() = runTest(dispatcher) {
+        val places = listOf(
+            place("Far").copy(coordinate = GeographicCoordinate(lat = 0.0, lng = 1.0)),
+            place("Near"),
+        )
+        viewModel.onQueryChanged("Station")
+        advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 1)
+        geocoder.complete(places)
+        advanceUntilIdle()
+
+        assertEquals(places, viewModel.state.value.results)
+    }
+
+    @Test
+    fun `equidistant results preserve the geocoder order`() = runTest(dispatcher) {
+        location.value = UserLocation(GeographicCoordinate(lat = 0.0, lng = 0.0), 5.0, null, java.time.Instant.EPOCH, null)
+        val places = listOf(place("Second alphabetically"), place("First alphabetically"))
+        viewModel.onQueryChanged("Station")
+        advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 1)
+        geocoder.complete(places)
+        advanceUntilIdle()
+
+        assertEquals(places, viewModel.state.value.results)
+    }
+
+    @Test
     fun `short queries are not searched and clear old results`() = runTest(dispatcher) {
         viewModel.onQueryChanged("Berlin")
         advanceTimeBy(SearchViewModel.DEBOUNCE_MS + 1)

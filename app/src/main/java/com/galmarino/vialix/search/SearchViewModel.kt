@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.galmarino.vialix.AppGraph
 import com.galmarino.vialix.RequestFailure
+import com.galmarino.vialix.navigation.distanceMeters
 import com.galmarino.vialix.settings.Settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -119,7 +120,9 @@ class SearchViewModel(
         try {
             val bias = location.value?.coordinates
             val places = geocoder.search(q, bias, settings.value.resolvedLanguageTag())
-            _state.update { it.copy(results = places, searchedQuery = q, isSearching = false) }
+            val origin = location.value?.coordinates
+            val results = if (origin != null) places.sortedBy { distanceMeters(origin, it.coordinate) } else places
+            _state.update { it.copy(results = results, searchedQuery = q, isSearching = false) }
         } catch (e: CancellationException) {
             // A newer query superseded this one; collectLatest cancelled us. Not an error.
             throw e

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
@@ -49,13 +50,13 @@ fun TopSearchBar(onMenuClick: () -> Unit, onSearchClick: () -> Unit, onMicClick:
         contentColor = chrome.content,
         border = chrome.outlineStroke,
         shadowElevation = 2.dp,
-        modifier = modifier.fillMaxWidth().height(48.dp),
+        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onMenuClick) {
                 Icon(painter = painterResource(R.drawable.ic_menu), contentDescription = stringResource(R.string.menu))
             }
-            // The visible hint mentions the long-press; a screen reader gets the action instead.
+            // Keep the short visible prompt descriptive for screen readers.
             val accessibleName = stringResource(R.string.search_placeholder)
             Text(
                 text = stringResource(R.string.search_hint),

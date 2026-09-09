@@ -134,8 +134,8 @@ URL, API key and all). Failures are reduced to `RequestFailure` (`Offline` / `Se
 
 **Map screen layout.** `NavigationScreen` is a Material3 `BottomSheetScaffold` whose content is
 Ferrostar's `DynamicallyOrientingNavigationView` plus, while idle, the status-bar scrim, the
-full-width search pill (`TopSearchBar`) and the FAB stack (`MapFabStack`, currently only the
-my-location button). `NavigationMap` owns only what decides the layout (guidance running, sheet mode
+full-width search pill (`TopSearchBar`, minimum 56 dp high, with the short “Where to?” prompt) and
+the FAB stack (`MapFabStack`, currently only the my-location button). `NavigationMap` owns only what decides the layout (guidance running, sheet mode
 and height, camera options) and delegates to composables with narrower state reads, because the
 location updates at 1 Hz: `SheetContent` (preview / arrival crossfade), `MapCanvas` (the Ferrostar
 view, the app's layers, `IdleChrome`, the FAB; reads the style and saved places itself),
@@ -147,7 +147,12 @@ screen (`ui/MenuDrawer.kt`: Settings, version, data credits); its edge-swipe ges
 only while it is open, so a swipe from the edge pans the map rather than opening the drawer. The sheet has three modes: hidden while idle (the map is unobstructed; there
 is deliberately no Home/Work/recents drawer, those live on the search screen) and while navigating
 (Ferrostar's progress view owns the bottom), `RoutePreviewSheetContent` and `ArrivalSheetContent`
-(never draggable; their peek height is their measured content height). The peek height is animated
+(never draggable; their peek height is their measured content height). The route preview is capped
+at 60% of the map container height: its body scrolls while a Start button at least 56 dp tall stays in a
+fixed footer above the navigation bar. Its header close button cancels the preview; there is no
+separate Cancel row or drag handle. The labelled profile segments scroll horizontally when screen
+width or font scale requires it; the selected route's duration is prominent above the alternative
+chips, whose selected state also has a checkmark. The peek height is animated
 (`animateDpAsState`) and the content crossfades between modes; the idle chrome uses
 `AnimatedVisibility`. The FAB stack sits `FAB_SHEET_GAP` above the sheet's top edge, or above the
 navigation bar when the sheet is hidden (`Modifier.offset {}` on `max(peek, bottom inset)`), and
@@ -187,7 +192,10 @@ circle, `MapPaint.favorite`, with the white `ic_home`/`ic_work` glyph; a tap on 
 `onClick` calls `selectDestination` with the saved place, and the marker whose coordinate is the
 current destination is skipped so the red pin does not sit on top of it). Everything else is managed
 on the **search screen** (the map screen has no drawer):
-the rows and dialogs are in `ui/PlaceRows.kt`. Home and Work are always listed; an unset one reads
+the rows and dialogs are in `ui/PlaceRows.kt`. Home and Work are always listed under a “Saved places”
+heading, followed by “Recent”; an empty recents list explains that destinations appear after
+navigation starts and omits the Clear action. Saved-place and search-result rows share a 40 dp
+icon footprint, prominent names and secondary addresses. An unset Home/Work row reads
 "Set location" and a tap (or a long-press on a set one) opens `FavoriteOptionsDialog` (search for
 an address / use the current fix / remove). A long-press on a recent removes it and the header's
 Clear empties the list. "Search for an address" goes through `ScreenState.favoriteToAssign`
@@ -249,7 +257,13 @@ once rather than completing after the 400 ms debounce and repopulating results t
 `Destination` carries the optional name/address that `DestinationSheet` shows instead of
 "Dropped pin" + coordinates. While the query is shorter than `MIN_QUERY_LENGTH` the screen lists
 Home/Work and the recents instead (with a banner while a Home/Work assignment is pending, see
-**Saved places**); result rows show the distance from the user via `navigation/Geo.kt`. Voice search (`ui/VoiceSearch.kt`)
+**Saved places**); result rows show the distance from the user via `navigation/Geo.kt`.
+The screen consumes scaffold insets before applying keyboard padding to the entire body, so
+lists and the scrollable loading/no-results/error states stay above the keyboard. Empty results
+suggest another place name or a fuller address; failures retain the Retry action. Old results
+remain visible while a replacement query loads.
+Search results are sorted nearest-first by straight-line distance using the latest location when
+the response arrives; without a location, Photon's order is preserved. Voice search (`ui/VoiceSearch.kt`)
 uses the system `RecognizerIntent` (manifest `<queries>` entry) and feeds the text through
 `SearchViewModel.onQueryChanged` + `submit`; the mic is hidden when no recogniser is installed.
 `SearchScreen` re-seeds its local `TextFieldValue` only when `state.query` differs from it, so
