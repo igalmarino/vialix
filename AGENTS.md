@@ -27,7 +27,7 @@ as `fullImplementation`) and `foss` (no proprietary code, F-Droid). Each has its
 signature; nothing else differs. The flavour-less task names (`assembleDebug`, `testDebugUnitTest`)
 still exist as aggregates over both flavours and take twice as long.
 
-Requires an Android SDK with `platforms;android-36` + `build-tools;36.0.0`. The dev container
+Requires an Android SDK with `platforms;android-37.0` + `build-tools;36.0.0`. The dev container
 installs these and exports `ANDROID_HOME=/opt/android-sdk`; outside it, copy
 `local.properties.example` to `local.properties` and set `sdk.dir`.
 
@@ -42,7 +42,7 @@ with a toolchain-not-found message; install one (in the dev container it is
 
 The project targets Java 17 bytecode; the build itself runs on JDK 25.
 
-There is no instrumented-test source set. CI is `.github/workflows/ci.yml` (JDK 25, SDK 36:
+There is no instrumented-test source set. CI is `.github/workflows/ci.yml` (JDK 25, SDK 37:
 wrapper validation, `assembleFullDebug testFullDebugUnitTest lintFullDebug`, the foss debug build
 and lint, then both release builds to keep R8 honest; the debug APKs and the R8 `mapping.txt`
 files are uploaded as artifacts). Pushing a `v*` tag runs
@@ -54,8 +54,8 @@ CI also runs **ktlint** 1.8.0 (`android_studio` style, rules in `.editorconfig`;
 exempt from the function-naming rule) over `app/src`: run `ktlint --format "app/src/**/*.kt"` before
 pushing. The `lint {}` block disables `LogNotTimber` and the stale-version checks, and `app/lint.xml` ignores
 `ObsoleteSdkInt` for `mipmap-anydpi-v26` (AAPT2 does not resolve the manifest icon from a plain
-`mipmap-anydpi` folder), so the report only holds actionable findings; it is currently clean and
-the error count must stay at zero. Backups and device transfers exclude the preferences
+`mipmap-anydpi` folder), so the error count must stay at zero. The expected `OldTargetApi` warning tracks the separate
+target-SDK-37 migration; this dependency upgrade deliberately keeps target SDK 36. Backups and device transfers exclude the preferences
 (`res/xml/data_extraction_rules.xml` + `backup_rules.xml`): the recents are a location history.
 
 ## Design notes
@@ -66,13 +66,14 @@ Update those notes when the behaviour they describe changes.
 
 ## Conventions
 
-- Dependency versions live only in `gradle/libs.versions.toml`. AGP, Kotlin, Compose and
-  especially `maplibre-compose` intentionally mirror what Ferrostar 0.54.0 is built against —
-  bumping `maplibreCompose` off Ferrostar's version breaks the UI modules at runtime. Dependabot
-  ignores all of them (`.github/dependabot.yml`); they move by hand, together, when Ferrostar does.
-  Newer AndroidX releases can drag Compose 1.12+ in transitively, which needs AGP 9.1+: such a
-  Dependabot PR fails `checkFullDebugAarMetadata` and is closed until then.
-- `android.newDsl=false` in `gradle.properties` keeps AGP 9 on the classic DSL, matching Ferrostar.
+- Dependency versions live only in `gradle/libs.versions.toml`. Ferrostar 0.54.0 and
+  `maplibre-compose` 0.13.0 stay matched: changing the latter independently breaks the UI modules
+  at runtime. AGP 9.1.1, Kotlin 2.4.10 and Compose BOM 2026.08.00 are the app's coordinated
+  toolchain; Core KTX 1.19.0 and Compose 1.12 require compile SDK 37. The target SDK stays 36.
+  Dependabot ignores Ferrostar, MapLibre Compose, AGP, Kotlin and the Compose BOM so upgrades
+  can be coordinated by hand. Check AndroidX AAR metadata requirements and validate both flavours,
+  including R8 release builds, before merging dependency updates.
+- `android.newDsl=false` in `gradle.properties` keeps AGP 9 on the classic DSL until the app migrates.
 - Ferrostar's Rust bindings are imported as `uniffi.ferrostar.*` (`Route`, `GeographicCoordinate`,
   `Waypoint`, ...). Those types are the app's domain model; don't wrap them without reason.
 - Unit tests are plain JUnit 4 on the JVM and cover the pure pieces (see `app/src/test`;

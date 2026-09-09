@@ -1,10 +1,10 @@
 # Single source of truth for dependency versions.
-# The AGP / Kotlin / Compose / MapLibre Compose versions intentionally mirror the ones
-# Ferrostar 0.54.0 is built and tested against. In particular maplibre-compose MUST stay
-# on the version Ferrostar links against, or the UI modules will fail at runtime.
+# AGP / Kotlin / Compose are upgraded together with the required compile SDK and
+# validated against both flavours, including R8 release builds. MapLibre Compose MUST
+# stay on the version Ferrostar links against, or the UI modules will fail at runtime.
 
 [versions]
-agp = "9.0.1"
+agp = "9.1.1"
 kotlin = "2.4.10"
 composeBom = "2026.08.00"
 activityCompose = "1.13.0"

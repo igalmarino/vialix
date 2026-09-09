@@ -38,7 +38,8 @@ val releaseStoreFile = signing("storeFile")?.let { rootProject.file(it) }?.takeI
 
 android {
     namespace = "com.galmarino.vialix"
-    compileSdk = 36
+    // AndroidX Core 1.19 / Compose 1.12 require API 37; target behaviour stays on API 36.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.galmarino.vialix"

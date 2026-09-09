@@ -21,6 +21,8 @@ and the project uses [semantic versioning](https://semver.org).
 - A ktlint formatting gate in CI.
 
 ### Changed
+- Upgrade AndroidX Core KTX to 1.19.0 and Compose BOM to 2026.08.00, with AGP 9.1.1
+  and compile SDK 37; target SDK remains 36. CI and SDK provisioning use platform 37.0.
 - Travel times are formatted in the guidance language ("25 min", "1 hr, 25 min") instead of
   "25 m".
 - The notification permission is requested when guidance starts, not at first launch.
@@ -29,6 +31,7 @@ and the project uses [semantic versioning](https://semver.org).
 - The debug build installs as `com.galmarino.vialix.debug`, next to a release build.
 
 ### Fixed
+- Correct Dependabot ignore-rule indentation so coordinated dependency updates stay manual.
 - Location permission revocation now clears the cached fix, stops guidance and disables location
   and compass collection until permission is restored.
 - Superseded route and reverse-geocoding requests can no longer update a newer preview.

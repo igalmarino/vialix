@@ -4,11 +4,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
-        ignore:
+    ignore:
       # Ferrostar and MapLibre Compose move together: the UI modules break at runtime on any other
-      # maplibre-compose version, so both are bumped by hand (see gradle/libs.versions.toml). AGP,
-      # the Kotlin Compose plugin and the Compose BOM mirror what Ferrostar is built against and
-      # move with it, also by hand.
+      # maplibre-compose version, so both are bumped by hand (see gradle/libs.versions.toml).
+      # AGP, the Kotlin Compose plugin and the Compose BOM are coordinated manually with
+      # compileSdk and validated together, including R8 release builds.
       - dependency-name: "org.maplibre.compose:*"
       - dependency-name: "com.stadiamaps.ferrostar:*"
       - dependency-name: "com.android.application"
