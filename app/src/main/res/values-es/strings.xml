@@ -104,4 +104,6 @@
     <string name="cancel_route_preview">Cancelar vista previa de la ruta</string>
     <string name="search_no_results_help">Prueba con otro nombre de lugar o una dirección más completa.</string>
     <string name="search_loading">Buscando lugares…</string>
+    <string name="current_speed">Velocidad actual: %1$s %2$s</string>
+    <string name="speed_unavailable">Velocidad actual no disponible</string>
 </resources>

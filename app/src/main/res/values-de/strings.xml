@@ -104,4 +104,6 @@
     <string name="cancel_route_preview">Routenvorschau abbrechen</string>
     <string name="search_no_results_help">Versuche einen anderen Ortsnamen oder eine vollständigere Adresse.</string>
     <string name="search_loading">Orte werden gesucht…</string>
+    <string name="current_speed">Aktuelle Geschwindigkeit: %1$s %2$s</string>
+    <string name="speed_unavailable">Aktuelle Geschwindigkeit nicht verfügbar</string>
 </resources>
