@@ -106,4 +106,9 @@
     <string name="cancel_route_preview">Cancel route preview</string>
     <string name="search_no_results_help">Try a different place name or a more complete address.</string>
     <string name="search_loading">Searching for places…</string>
+    <string name="current_speed">Current speed: %1$s %2$s</string>
+    <string name="speed_unavailable">Current speed unavailable</string>
+    <string name="speed_kmh" translatable="false">km/h</string>
+    <string name="speed_mph" translatable="false">mph</string>
+    <string name="speed_unknown" translatable="false">—</string>
 </resources>

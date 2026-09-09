@@ -6,6 +6,7 @@ and the project uses [semantic versioning](https://semver.org).
 ## [Unreleased]
 
 ### Added
+- Current speed during guidance in km/h or mph, with unavailable or stale readings shown as a dash.
 - Shared instructions for Claude Code and Codex, with both agents provisioned in the dev container.
 - Open `geo:` links and "Directions" requests from other apps: a coordinate previews the route,
   free text opens the search.

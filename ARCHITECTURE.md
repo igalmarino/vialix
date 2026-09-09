@@ -175,6 +175,12 @@ MapLibre's logo / attribution do the same through the view's `ornamentPadding`. 
 idle overlay slot (`withCustomOverlayView`) is not used. Long-presses (map, Home/Work rows, recents)
 give `HapticFeedbackType.LongPress`.
 
+During guidance, `SpeedReadout` sits above the trip progress view in its layout slot (portrait
+and landscape). It shows the location fix’s speed rounded to whole km/h or mph according to
+Settings, using the map chrome colours. Missing, invalid or more than 5-second-old readings
+show a dash; a timer expires the readout even when location updates stop. The display predictor
+only shifts coordinates, so the readout still uses the measured speed.
+
 **Camera follow modes.** `navigation/CameraFollowMode` (FREE → FOLLOW → HEADING → FREE, pure,
 unit-tested) is the my-location button's state; `ui/MapControls.kt` maps it onto Ferrostar's
 `NavigationMapState.cameraMode` (`FREE`, `FOLLOW_USER`, `FOLLOW_USER_WITH_BEARING`; `OVERVIEW`

@@ -99,6 +99,7 @@ import com.galmarino.vialix.navigation.NavigationViewModel
 import com.galmarino.vialix.navigation.Notice
 import com.galmarino.vialix.navigation.RouteError
 import com.galmarino.vialix.navigation.ScreenState
+import com.galmarino.vialix.settings.DistanceUnits
 import com.galmarino.vialix.settings.NavSettings
 import com.galmarino.vialix.ui.theme.LocalDarkTheme
 import com.stadiamaps.ferrostar.composeui.config.NavigationViewComponentBuilder
@@ -320,7 +321,7 @@ private fun NavigationMap(
     val distanceFormatter = rememberDistanceFormatter(currentSettings)
     val durationFormatter = rememberDurationFormatter(currentSettings)
     val clockFormatter = rememberClockTimeFormatter(currentSettings)
-    val navigationViews = rememberNavigationViews(distanceFormatter)
+    val navigationViews = rememberNavigationViews(distanceFormatter, currentSettings.units)
 
     // The notification that keeps guidance alive in the background needs a permission on Android
     // 13+. It is asked for when it is about to matter, at Start, rather than stacked behind the
@@ -496,36 +497,39 @@ private fun NavigationMap(
  * recomposition would invalidate Ferrostar's whole view at the rate of the GPS fixes.
  */
 @Composable
-private fun rememberNavigationViews(distanceFormatter: DistanceFormatter): NavigationViewComponentBuilder = remember(distanceFormatter) {
-    NavigationViewComponentBuilder.Default()
-        .withInstructionsView { instructionsModifier, state ->
-            val instruction = state.visualInstruction
-            if (instruction == null) {
-                // The core hides the banner while the user is completely off route; fill
-                // the gap so a slow reroute does not look like nothing.
-                if (state.isRerouting()) ReroutingBanner(instructionsModifier)
-                return@withInstructionsView
+private fun rememberNavigationViews(distanceFormatter: DistanceFormatter, units: DistanceUnits): NavigationViewComponentBuilder =
+    remember(distanceFormatter, units) {
+        NavigationViewComponentBuilder.Default()
+            .withInstructionsView { instructionsModifier, state ->
+                val instruction = state.visualInstruction
+                if (instruction == null) {
+                    // The core hides the banner while the user is completely off route; fill
+                    // the gap so a slow reroute does not look like nothing.
+                    if (state.isRerouting()) ReroutingBanner(instructionsModifier)
+                    return@withInstructionsView
+                }
+                InstructionsView(
+                    instructions = instruction,
+                    distanceToNextManeuver = state.progress?.distanceToNextManeuver,
+                    modifier = instructionsModifier,
+                    distanceFormatter = distanceFormatter,
+                    theme = DefaultNavigationUITheme.instructionRowTheme,
+                    remainingSteps = state.remainingSteps,
+                )
             }
-            InstructionsView(
-                instructions = instruction,
-                distanceToNextManeuver = state.progress?.distanceToNextManeuver,
-                modifier = instructionsModifier,
-                distanceFormatter = distanceFormatter,
-                theme = DefaultNavigationUITheme.instructionRowTheme,
-                remainingSteps = state.remainingSteps,
-            )
-        }
-        .withProgressView { progressModifier, state, onTapExit ->
-            val progress = state.progress ?: return@withProgressView
-            TripProgressView(
-                modifier = progressModifier,
-                theme = DefaultNavigationUITheme.tripProgressViewTheme,
-                distanceFormatter = distanceFormatter,
-                progress = progress,
-                onTapExit = onTapExit,
-            )
-        }
-}
+            .withProgressView { progressModifier, state, onTapExit ->
+                val progress = state.progress ?: return@withProgressView
+                Column(modifier = progressModifier) {
+                    SpeedReadout(location = state.location, units = units)
+                    TripProgressView(
+                        theme = DefaultNavigationUITheme.tripProgressViewTheme,
+                        distanceFormatter = distanceFormatter,
+                        progress = progress,
+                        onTapExit = onTapExit,
+                    )
+                }
+            }
+    }
 
 /**
  * The one-off snackbars. Failures of the route request are part of the preview and shown inline

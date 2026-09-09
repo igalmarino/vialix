@@ -104,4 +104,6 @@
     <string name="cancel_route_preview">Annuler l’aperçu de l’itinéraire</string>
     <string name="search_no_results_help">Essayez un autre nom de lieu ou une adresse plus complète.</string>
     <string name="search_loading">Recherche de lieux…</string>
+    <string name="current_speed">Vitesse actuelle : %1$s %2$s</string>
+    <string name="speed_unavailable">Vitesse actuelle indisponible</string>
 </resources>
