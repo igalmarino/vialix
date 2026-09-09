@@ -177,6 +177,12 @@ class NavigationViewModel(
     /** The route request in flight for the preview; a new request cancels it so a slow reply cannot overwrite a newer one. */
     private var routeJob: Job? = null
 
+    /** Invalidates a completed route response even when cancellation loses a race with delivery. */
+    private val routeRequests = RequestGeneration()
+
+    /** The reverse lookup for the selected dropped pin; there can only be one. */
+    private var reverseGeocodeJob: Job? = null
+
     init {
         // Position for the puck, route requests and search distances. Only while the screen is
         // started: the ViewModel outlives a backgrounded Activity, and 1 Hz GPS in the background
@@ -190,7 +196,7 @@ class NavigationViewModel(
                     navigating,
                 ->
                 when {
-                    navigating -> LocationSource.GUIDANCE
+                    granted && navigating -> LocationSource.GUIDANCE
                     granted && foreground -> LocationSource.PROVIDER
                     else -> LocationSource.NONE
                 }
@@ -210,7 +216,7 @@ class NavigationViewModel(
                         LocationSource.NONE -> emptyFlow()
                     }
                 }
-                .collect { _location.value = it }
+                .collect { if (hasLocationPermission.value) _location.value = it }
         }
 
         // The compass only matters for the idle puck and camera: registered while the screen is
@@ -282,7 +288,9 @@ class NavigationViewModel(
      * started, and a simulation switched on for it.
      */
     override fun onCleared() {
+        routeRequests.invalidate()
         routeJob?.cancel()
+        reverseGeocodeJob?.cancel()
         if (!core.state.value.isNavigating()) {
             voiceGuidance.shutdown()
             locationProvider.disableSimulation()
@@ -290,8 +298,25 @@ class NavigationViewModel(
         super.onCleared()
     }
 
-    fun onLocationPermissionGranted() {
-        hasLocationPermission.value = true
+    fun onLocationPermissionChanged(granted: Boolean) {
+        if (hasLocationPermission.value == granted) return
+        hasLocationPermission.value = granted
+        if (granted) return
+
+        _location.value = null
+        compassHeading.value = null
+        cancelPreviewRequests()
+        if (core.state.value.isNavigating()) {
+            Log.w(TAG, "Location permission revoked; stopping navigation")
+            stopNavigation()
+        }
+        _screenState.update { state ->
+            if (state.destination != null) {
+                state.copy(preview = RoutePreview.Failed(RouteError.NoLocationFix), error = null)
+            } else {
+                state
+            }
+        }
     }
 
     /** Driven by the screen's lifecycle (started/stopped). */
@@ -312,6 +337,7 @@ class NavigationViewModel(
         // A new pick while the arrival card is still up dismisses it (and stops the core now
         // rather than at the end of the grace period, so Start cannot race a completed session).
         if (_screenState.value.arrival != null) acknowledgeArrival()
+        reverseGeocodeJob?.cancel()
         _screenState.update { it.copy(destination = destination) }
         // Binding the TTS engine takes a moment; do it while the route is in flight so the first
         // announcement is not lost.
@@ -322,14 +348,16 @@ class NavigationViewModel(
 
     /** (Re)fetch the preview for [destination], which must already be the selected one. */
     private fun requestRoute(destination: Destination) {
+        val requestGeneration = routeRequests.begin()
+        routeJob?.cancel()
         _screenState.update { it.copy(preview = RoutePreview.Fetching, error = null) }
-        fetchRoute(destination)
+        fetchRoute(requestGeneration, destination)
     }
 
     /** Ask for the same route again after a failure (inline Retry in the preview). */
     fun retryRoute() {
         val destination = _screenState.value.destination ?: return
-        selectDestination(destination)
+        requestRoute(destination)
     }
 
     /** One of the alternatives in the preview was tapped. */
@@ -339,7 +367,7 @@ class NavigationViewModel(
 
     /** The user dismissed the preview: drop the pin and release the TTS engine bound for it. */
     fun clearDestination() {
-        routeJob?.cancel()
+        cancelPreviewRequests()
         _screenState.update { it.copy(destination = null, preview = RoutePreview.None, error = null) }
         if (!core.state.value.isNavigating()) voiceGuidance.shutdown()
     }
@@ -413,14 +441,14 @@ class NavigationViewModel(
         // Without a recent fix the core would anchor the session at the route's first point (it
         // declares `UserLocationUnknown` but does not throw it): keep the preview and say so in a
         // snackbar instead, so Start can simply be tapped again once the puck is back.
-        if (!simulate && freshLocation() == null) {
+        if (!simulate && (!hasLocationPermission.value || freshLocation() == null)) {
             Log.w(TAG, "Cannot start navigation without a location")
             _screenState.update { it.copy(error = RouteError.NoLocationFix) }
             return
         }
 
         if (simulate) locationProvider.enableSimulationOn(route)
-        routeJob?.cancel()
+        cancelPreviewRequests()
         voiceGuidance.start()
         displayLocation.reset()
 
@@ -469,13 +497,12 @@ class NavigationViewModel(
         settings.setVoiceEnabled(!settings.state.value.voiceEnabled)
     }
 
-    private fun fetchRoute(destination: Destination) {
-        routeJob?.cancel()
+    private fun fetchRoute(requestGeneration: Long, destination: Destination) {
         routeJob =
             viewModelScope.launch(Dispatchers.IO) {
-                val origin = freshLocation()
+                val origin = freshLocation().takeIf { hasLocationPermission.value }
                 if (origin == null) {
-                    fail(destination, RouteError.NoLocationFix)
+                    fail(requestGeneration, destination, RouteError.NoLocationFix)
                     return@launch
                 }
 
@@ -487,22 +514,38 @@ class NavigationViewModel(
                     } catch (e: Exception) {
                         // Full detail here only; the user gets a message they can act on.
                         Log.e(TAG, "Route request failed", e)
-                        fail(destination, RouteError.RequestFailed(RequestFailure.of(e)))
+                        fail(requestGeneration, destination, RouteError.RequestFailed(RequestFailure.of(e)))
                         return@launch
                     }
 
-                // The user may have picked a different destination while we were waiting. (Compared by
-                // coordinate: the reverse lookup may have relabelled the same pin meanwhile.)
-                if (!_screenState.value.isSelected(destination)) return@launch
-
                 Log.i(TAG, "Routes: ${routes.map { "${it.distance.toInt()} m / ${it.steps.size} steps" }}")
-                _screenState.update { it.copy(preview = RoutePreview.of(routes)) }
+                _screenState.update { state ->
+                    if (routeRequests.isCurrent(requestGeneration) && state.isSelected(destination)) {
+                        state.copy(preview = RoutePreview.of(routes))
+                    } else {
+                        state
+                    }
+                }
             }
     }
 
     /** The request for [destination] failed: shown inline in its preview, unless the user has moved on. */
-    private fun fail(destination: Destination, error: RouteError) {
-        _screenState.update { if (it.isSelected(destination)) it.copy(preview = RoutePreview.Failed(error)) else it }
+    private fun fail(requestGeneration: Long, destination: Destination, error: RouteError) {
+        _screenState.update { state ->
+            if (routeRequests.isCurrent(requestGeneration) && state.isSelected(destination)) {
+                state.copy(preview = RoutePreview.Failed(error))
+            } else {
+                state
+            }
+        }
+    }
+
+    private fun cancelPreviewRequests() {
+        routeRequests.invalidate()
+        routeJob?.cancel()
+        routeJob = null
+        reverseGeocodeJob?.cancel()
+        reverseGeocodeJob = null
     }
 
     private fun ScreenState.isSelected(destination: Destination) = this.destination?.coordinate == destination.coordinate
@@ -518,7 +561,8 @@ class NavigationViewModel(
      * showing "Dropped pin" and the coordinates.
      */
     private fun resolveAddress(destination: Destination) {
-        viewModelScope.launch(Dispatchers.IO) {
+        reverseGeocodeJob?.cancel()
+        reverseGeocodeJob = viewModelScope.launch(Dispatchers.IO) {
             val place =
                 try {
                     geocoder.reverse(destination.coordinate, settings.state.value.resolvedLanguageTag())

@@ -26,6 +26,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -34,6 +35,7 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -192,36 +194,41 @@ fun NavigationScreen(
     fun isGranted() = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
         PackageManager.PERMISSION_GRANTED
 
-    fun grant() {
-        permission = LocationPermission.Granted
-        viewModel.onLocationPermissionGranted()
+    fun updatePermission(granted: Boolean) {
+        viewModel.onLocationPermissionChanged(granted)
+        if (granted) {
+            permission = LocationPermission.Granted
+        } else {
+            // After repeated denials Android answers without showing a dialog; asking again
+            // would then be a button that does nothing.
+            val canAskAgain =
+                activity != null &&
+                    ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
+            permission = if (canAskAgain) LocationPermission.Denied else LocationPermission.DeniedPermanently
+        }
     }
 
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-            if (granted[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
-                grant()
-            } else {
-                // After repeated denials Android answers without showing a dialog; asking again
-                // would then be a button that does nothing.
-                val canAskAgain =
-                    activity != null &&
-                        ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)
-                permission = if (canAskAgain) LocationPermission.Denied else LocationPermission.DeniedPermanently
-            }
+            updatePermission(granted[Manifest.permission.ACCESS_FINE_LOCATION] == true)
         }
 
     LaunchedEffect(Unit) {
         if (isGranted()) {
-            grant()
+            updatePermission(true)
         } else if (permission == LocationPermission.Unknown) {
             launcher.launch(requiredPermissions())
         }
     }
 
-    // Back from the system settings page (or wherever) with the permission granted meanwhile.
+    // Reconcile grants and revocations made in system settings while the app was paused.
     LifecycleResumeEffect(Unit) {
-        if (permission != LocationPermission.Granted && isGranted()) grant()
+        val granted = isGranted()
+        if (granted && permission != LocationPermission.Granted) {
+            updatePermission(true)
+        } else if (!granted && permission == LocationPermission.Granted) {
+            updatePermission(false)
+        }
         onPauseOrDispose {}
     }
 
@@ -430,51 +437,55 @@ private fun NavigationMap(
             )
         },
     ) {
-        BottomSheetScaffold(
-            scaffoldState = scaffoldState,
-            sheetPeekHeight = animatedPeekHeight,
-            // Material 3 bottom-sheet tokens (extra-large top corners, surfaceContainerLow, level-1
-            // elevation).
-            sheetShape = BottomSheetDefaults.ExpandedShape,
-            sheetContainerColor = BottomSheetDefaults.ContainerColor,
-            sheetShadowElevation = BottomSheetDefaults.Elevation,
-            // The handle is part of the content so the measured preview height is the whole sheet.
-            sheetDragHandle = null,
-            sheetSwipeEnabled = false,
-            containerColor = Color.Transparent,
-            snackbarHost = { SnackbarHost(it) },
-            sheetContent = {
-                SheetContent(
-                    mode = sheetMode,
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val previewMaxHeight = maxHeight * 0.6f
+            BottomSheetScaffold(
+                scaffoldState = scaffoldState,
+                sheetPeekHeight = animatedPeekHeight,
+                // Material 3 bottom-sheet tokens (extra-large top corners, surfaceContainerLow, level-1
+                // elevation).
+                sheetShape = BottomSheetDefaults.ExpandedShape,
+                sheetContainerColor = BottomSheetDefaults.ContainerColor,
+                sheetShadowElevation = BottomSheetDefaults.Elevation,
+                // The preview is not draggable, so do not suggest dragging with a handle.
+                sheetDragHandle = null,
+                sheetSwipeEnabled = false,
+                containerColor = Color.Transparent,
+                snackbarHost = { SnackbarHost(it) },
+                sheetContent = {
+                    SheetContent(
+                        mode = sheetMode,
+                        previewMaxHeight = previewMaxHeight,
+                        screenState = screenState,
+                        routingProfile = currentSettings.routingProfile,
+                        distanceFormatter = distanceFormatter,
+                        durationFormatter = durationFormatter,
+                        clockFormatter = clockFormatter,
+                        onProfileSelected = settings::setRoutingProfile,
+                        onRouteSelected = viewModel::selectRoute,
+                        onRetry = viewModel::retryRoute,
+                        onStartNavigation = startNavigation,
+                        onCancel = viewModel::clearDestination,
+                        onDone = viewModel::acknowledgeArrival,
+                        onMeasured = { fixedSheetHeightPx = it },
+                    )
+                },
+            ) {
+                MapCanvas(
+                    viewModel = viewModel,
+                    mapState = mapState,
+                    mapStyleController = mapStyleController,
                     screenState = screenState,
-                    routingProfile = currentSettings.routingProfile,
-                    distanceFormatter = distanceFormatter,
-                    durationFormatter = durationFormatter,
-                    clockFormatter = clockFormatter,
-                    onProfileSelected = settings::setRoutingProfile,
-                    onRouteSelected = viewModel::selectRoute,
-                    onRetry = viewModel::retryRoute,
-                    onStartNavigation = startNavigation,
-                    onCancel = viewModel::clearDestination,
-                    onDone = viewModel::acknowledgeArrival,
-                    onMeasured = { fixedSheetHeightPx = it },
+                    isNavigating = isNavigating,
+                    cameraOptions = if (isNavigating) cameraOptions else browsingCameraOptions,
+                    navigationViews = navigationViews,
+                    sheetPeekHeight = sheetPeekHeight,
+                    animatedPeekHeight = animatedPeekHeight,
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    onSearchClick = onOpenSearch,
+                    onMicClick = startVoiceSearch,
                 )
-            },
-        ) {
-            MapCanvas(
-                viewModel = viewModel,
-                mapState = mapState,
-                mapStyleController = mapStyleController,
-                screenState = screenState,
-                isNavigating = isNavigating,
-                cameraOptions = if (isNavigating) cameraOptions else browsingCameraOptions,
-                navigationViews = navigationViews,
-                sheetPeekHeight = sheetPeekHeight,
-                animatedPeekHeight = animatedPeekHeight,
-                onMenuClick = { scope.launch { drawerState.open() } },
-                onSearchClick = onOpenSearch,
-                onMicClick = startVoiceSearch,
-            )
+            }
         }
     }
 }
@@ -604,6 +615,7 @@ private fun MapMessages(
 @Composable
 private fun SheetContent(
     mode: SheetMode,
+    previewMaxHeight: Dp,
     screenState: ScreenState,
     routingProfile: String,
     distanceFormatter: DistanceFormatter,
@@ -637,7 +649,7 @@ private fun SheetContent(
                     onRetry = onRetry,
                     onStartNavigation = onStartNavigation,
                     onCancel = onCancel,
-                    modifier = Modifier.onSizeChanged { onMeasured(it.height) },
+                    modifier = Modifier.heightIn(max = previewMaxHeight).onSizeChanged { onMeasured(it.height) },
                 )
             }
 

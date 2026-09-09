@@ -3,9 +3,15 @@
 
 package com.galmarino.vialix.map
 
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import mockwebserver3.SocketEffect.CloseSocket
+import mockwebserver3.SocketEffect.Stall
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import org.junit.After
@@ -68,6 +74,48 @@ class MapStyleLoaderTest {
         server.enqueue(MockResponse.Builder().body("""{"version":8,"sprite":"sprites/ofm","sources":{},"layers":[]}""").build())
         val url = server.url("/styles/liberty").toString()
         assertEquals(MapStyleState.Unavailable(url, downloadFailed = false), load(night = false))
+    }
+
+    @Test
+    fun `a malformed response is not cached and retry can recover`() {
+        server.enqueue(MockResponse.Builder().body("<html>maintenance</html>").build())
+        server.enqueue(MockResponse.Builder().body(style).build())
+        val url = server.url("/styles/liberty").toString()
+
+        assertEquals(MapStyleState.Unavailable(url, downloadFailed = false), load(night = false))
+        assertTrue(load(night = false) is MapStyleState.Patched)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `a connection closed while reading is a retryable download failure`() {
+        server.enqueue(
+            MockResponse.Builder()
+                .body(style)
+                .onResponseBody(CloseSocket())
+                .build(),
+        )
+        val url = server.url("/styles/liberty").toString()
+
+        assertEquals(MapStyleState.Unavailable(url, downloadFailed = true), load(night = false))
+    }
+
+    @Test
+    fun `cancelling a stalled download cancels its HTTP call`() = runBlocking {
+        server.enqueue(
+            MockResponse.Builder()
+                .body(style)
+                .onResponseBody(Stall)
+                .build(),
+        )
+        val job =
+            launch(start = CoroutineStart.UNDISPATCHED) {
+                loader.load(server.url("/styles/liberty").toString(), night = false)
+            }
+        assertTrue(server.takeRequest(1, TimeUnit.SECONDS) != null)
+
+        job.cancelAndJoin()
+        assertTrue(job.isCancelled)
     }
 
     @Test

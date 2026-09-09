@@ -3,13 +3,17 @@
 
 package com.galmarino.vialix.ui
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -17,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,17 +53,13 @@ internal fun RecentRow(destination: Destination, onClick: () -> Unit, onLongClic
     val manageLabel = stringResource(R.string.recent_remove)
     ListItem(
         headlineContent = {
-            Text(destination.name ?: stringResource(R.string.dropped_pin_title), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(destination.name ?: stringResource(R.string.dropped_pin_title), style = MaterialTheme.typography.titleMedium)
         },
         supportingContent = {
-            Text(destination.address ?: formatCoordinates(destination.coordinate), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(destination.address ?: formatCoordinates(destination.coordinate), maxLines = 2, overflow = TextOverflow.Ellipsis)
         },
         leadingContent = {
-            Icon(
-                painter = painterResource(R.drawable.ic_history),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            PlaceLeadingIcon(R.drawable.ic_history)
         },
         trailingContent = { ManageButton(onLongClick, manageLabel) },
         modifier =
@@ -80,7 +81,7 @@ internal fun RecentRow(destination: Destination, onClick: () -> Unit, onLongClic
 internal fun FavoriteRow(kind: FavoriteKind, destination: Destination?, onClick: () -> Unit, onLongClick: (() -> Unit)? = null) {
     val manageLabel = stringResource(R.string.favorite_options, stringResource(kind.labelRes()))
     ListItem(
-        headlineContent = { Text(stringResource(kind.labelRes())) },
+        headlineContent = { Text(stringResource(kind.labelRes()), style = MaterialTheme.typography.titleMedium) },
         supportingContent = {
             Text(
                 text =
@@ -89,12 +90,12 @@ internal fun FavoriteRow(kind: FavoriteKind, destination: Destination?, onClick:
                     } else {
                         destination.name ?: destination.address ?: formatCoordinates(destination.coordinate)
                     },
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         },
         leadingContent = {
-            Icon(painter = painterResource(kind.iconRes()), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            PlaceLeadingIcon(kind.iconRes(), favourite = true)
         },
         trailingContent = { ManageButton(onLongClick, manageLabel) },
         modifier =
@@ -105,6 +106,20 @@ internal fun FavoriteRow(kind: FavoriteKind, destination: Destination?, onClick:
                 onLongClickLabel = onLongClick?.let { manageLabel },
             ),
     )
+}
+
+/** Shared icon footprint keeps saved places, recents and search results aligned. */
+@Composable
+internal fun PlaceLeadingIcon(@DrawableRes iconRes: Int, favourite: Boolean = false) {
+    Surface(
+        shape = CircleShape,
+        color = if (favourite) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (favourite) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+            Icon(painter = painterResource(iconRes), contentDescription = null, modifier = Modifier.size(24.dp))
+        }
+    }
 }
 
 /** The row's trailing "more" button when it can be managed, else the plain chevron of a row that only navigates. */

@@ -5,19 +5,19 @@ package com.galmarino.vialix.ui.search
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -66,6 +67,7 @@ import com.galmarino.vialix.search.SearchViewModel
 import com.galmarino.vialix.ui.ClearRecentsDialog
 import com.galmarino.vialix.ui.FavoriteOptionsDialog
 import com.galmarino.vialix.ui.FavoriteRow
+import com.galmarino.vialix.ui.PlaceLeadingIcon
 import com.galmarino.vialix.ui.RecentOptionsDialog
 import com.galmarino.vialix.ui.RecentRow
 import com.galmarino.vialix.ui.SectionHeaderRow
@@ -199,7 +201,7 @@ fun SearchScreen(
             )
         },
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+        Column(modifier = Modifier.padding(padding).consumeWindowInsets(padding).fillMaxSize().imePadding()) {
             if (state.isSearching) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 
             val error = state.error
@@ -221,12 +223,17 @@ fun SearchScreen(
                 error != null -> StatusLine(errorText(error), retry = viewModel::submit)
 
                 state.searchedQuery != null && state.results.isEmpty() && !state.isSearching ->
-                    StatusLine(stringResource(R.string.search_no_results, state.searchedQuery.orEmpty()))
+                    StatusLine(
+                        text = stringResource(R.string.search_no_results, state.searchedQuery.orEmpty()),
+                        supportingText = stringResource(R.string.search_no_results_help),
+                    )
+
+                state.isSearching && state.results.isEmpty() -> StatusLine(stringResource(R.string.search_loading))
 
                 else ->
                     // Previous results stay visible while a new request is in flight, so the list
                     // does not flicker on every keystroke.
-                    LazyColumn(modifier = Modifier.fillMaxSize().imePadding()) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(state.results) { place ->
                             ResultRow(
                                 place = place,
@@ -290,7 +297,7 @@ private fun SavedPlacesList(
     onRecentLongClick: (Destination) -> Unit,
     onClearRecents: () -> Unit,
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize().imePadding()) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
         if (assigningFavorite != null) {
             item(key = "assign") {
                 Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
@@ -303,6 +310,12 @@ private fun SavedPlacesList(
                 }
             }
         } else {
+            item(key = "saved-header") {
+                SectionHeaderRow(
+                    title = stringResource(R.string.saved_places_header),
+                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                )
+            }
             items(FavoriteKind.entries, key = { "favorite-$it" }) { kind ->
                 FavoriteRow(
                     kind = kind,
@@ -312,17 +325,29 @@ private fun SavedPlacesList(
                 )
             }
         }
-        if (places.recents.isNotEmpty()) {
-            item(key = "recent-header") {
-                SectionHeaderRow(
-                    title = stringResource(R.string.recent_header),
-                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                    action = { TextButton(onClick = onClearRecents) { Text(stringResource(R.string.recent_clear)) } },
+        item(key = "recent-header") {
+            SectionHeaderRow(
+                title = stringResource(R.string.recent_header),
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                action = if (places.recents.isNotEmpty()) {
+                    { TextButton(onClick = onClearRecents) { Text(stringResource(R.string.recent_clear)) } }
+                } else {
+                    null
+                },
+            )
+        }
+        if (places.recents.isEmpty()) {
+            item(key = "recent-empty") {
+                Text(
+                    text = stringResource(R.string.recent_empty),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            items(places.recents, key = { "recent-${it.coordinate.lat},${it.coordinate.lng}" }) { destination ->
-                RecentRow(destination = destination, onClick = { onPick(destination) }, onLongClick = { onRecentLongClick(destination) })
-            }
+        }
+        items(places.recents, key = { "recent-${it.coordinate.lat},${it.coordinate.lng}" }) { destination ->
+            RecentRow(destination = destination, onClick = { onPick(destination) }, onLongClick = { onRecentLongClick(destination) })
         }
     }
 }
@@ -330,35 +355,41 @@ private fun SavedPlacesList(
 @Composable
 private fun ResultRow(place: Place, distance: String?, onClick: () -> Unit) {
     ListItem(
-        headlineContent = { Text(place.name) },
+        headlineContent = { Text(place.name, style = MaterialTheme.typography.titleMedium) },
         supportingContent = place.address?.let { { Text(it) } },
-        leadingContent = { Icon(painter = painterResource(R.drawable.ic_search), contentDescription = null) },
+        leadingContent = { PlaceLeadingIcon(R.drawable.ic_search) },
         trailingContent =
             distance?.let {
                 {
-                    Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(text = it, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.clickable(role = Role.Button, onClick = onClick),
     )
 }
 
 @Composable
-private fun StatusLine(text: String, retry: (() -> Unit)? = null) {
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 32.dp), contentAlignment = Alignment.Center) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+private fun StatusLine(text: String, supportingText: String? = null, retry: (() -> Unit)? = null) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        if (supportingText != null) {
             Text(
-                text = text,
-                modifier = Modifier.weight(1f, fill = false),
+                text = supportingText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
-            if (retry != null) {
-                Spacer(Modifier.width(8.dp))
-                TextButton(onClick = retry) { Text(stringResource(R.string.retry)) }
-            }
         }
+        if (retry != null) TextButton(onClick = retry) { Text(stringResource(R.string.retry)) }
     }
 }
 

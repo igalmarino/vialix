@@ -57,6 +57,11 @@ class FusedLocationProvider private constructor(private val client: FusedLocatio
             }
         try {
             client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+                .addOnFailureListener { error ->
+                    Log.w(TAG, "Could not start location updates", error)
+                    close(error)
+                }
+                .addOnCanceledListener { close() }
         } catch (e: SecurityException) {
             Log.w(TAG, "Location permission missing", e)
             close()

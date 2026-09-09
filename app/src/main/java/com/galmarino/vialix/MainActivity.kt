@@ -59,6 +59,9 @@ class MainActivity : ComponentActivity() {
     /** A place or query another app handed over through a `geo:` link, until the UI has taken it. */
     private val externalTarget = MutableStateFlow<GeoTarget?>(null)
 
+    /** The source URI while [externalTarget] is pending, saved if recreation wins the race. */
+    private var pendingExternalUri: String? = null
+
     /**
      * API 29–32: apply the App language setting ourselves (on 33+ the framework does it from the
      * per-app locale). `application` is still null here; the application context is not.
@@ -73,7 +76,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // The OS per-app language screen may have changed it while the process was alive.
         graph.settings.syncUiLanguageFromSystem()
-        handleIntent(intent)
+        val restoredExternalUri = savedInstanceState?.getString(STATE_PENDING_EXTERNAL_URI)
+        if (restoredExternalUri != null) {
+            handleExternalUri(restoredExternalUri)
+        } else if (savedInstanceState == null) {
+            handleIntent(intent)
+        }
         // Edge to edge. `auto` picks the glyph colour from the configuration's night flag for the
         // frame before Compose draws; SystemBarGlyphs below then follows the resolved theme, which
         // is what everything under the bars (map tiles, chrome, sheets, pages) follows as well.
@@ -102,13 +110,17 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(Unit) {
                         externalTarget.filterNotNull().collect { target ->
                             externalTarget.value = null
+                            pendingExternalUri = null
+                            viewModel.cancelFavoriteAssignment()
                             when (target) {
                                 is GeoTarget.Place -> {
                                     showSearch = false
-                                    viewModel.onPlacePicked(target.destination)
+                                    searchViewModel.reset()
+                                    viewModel.selectDestination(target.destination)
                                 }
 
                                 is GeoTarget.Query -> {
+                                    searchViewModel.reset()
                                     searchViewModel.onQueryChanged(target.text)
                                     searchViewModel.submit()
                                     showSearch = true
@@ -180,17 +192,33 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleIntent(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        pendingExternalUri?.let { outState.putString(STATE_PENDING_EXTERNAL_URI, it) }
+        super.onSaveInstanceState(outState)
     }
 
     private fun handleIntent(intent: Intent?) {
         val uri = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
+        handleExternalUri(uri)
+    }
+
+    private fun handleExternalUri(uri: String) {
         val target = GeoIntent.parse(uri)
-        if (target == null) Log.w(TAG, "Ignoring unparseable geo intent") else externalTarget.value = target
+        if (target == null) {
+            Log.w(TAG, "Ignoring unparseable geo intent")
+        } else {
+            pendingExternalUri = uri
+            externalTarget.value = target
+        }
     }
 
     private companion object {
         const val TAG = "MainActivity"
+        const val STATE_PENDING_EXTERNAL_URI = "pending_external_uri"
     }
 }
 

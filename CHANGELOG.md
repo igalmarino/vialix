@@ -6,6 +6,7 @@ and the project uses [semantic versioning](https://semver.org).
 ## [Unreleased]
 
 ### Added
+- Shared instructions for Claude Code and Codex, with both agents provisioned in the dev container.
 - Open `geo:` links and "Directions" requests from other apps: a coordinate previews the route,
   free text opens the search.
 - A snackbar with a *Turn on* action when the system location switch is off.
@@ -28,6 +29,14 @@ and the project uses [semantic versioning](https://semver.org).
 - The debug build installs as `com.galmarino.vialix.debug`, next to a release build.
 
 ### Fixed
+- Location permission revocation now clears the cached fix, stops guidance and disables location
+  and compass collection until permission is restored.
+- Superseded route and reverse-geocoding requests can no longer update a newer preview.
+- Submitted searches are no longer cancelled and repeated when their debounce timer expires.
+- External directions requests cannot overwrite a pending Home or Work assignment or replay after
+  an activity recreation.
+- Failed and interrupted map-style responses are retryable and are not cached.
+- Tagged releases now require signing secrets, a matching version, verified APKs and checksums.
 - A pooled HTTP connection leaked on every failed routing reply.
 - Wrong compass heading on devices whose rotation-vector sensor reports three values.
 - A crash when the location permission was revoked while the app was running.
