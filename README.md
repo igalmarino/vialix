@@ -20,7 +20,7 @@ route, and a foreground notification so guidance survives backgrounding.
 | Routing | [Valhalla](https://github.com/valhalla/valhalla) via the public FOSSGIS server | Open-source engine; the endpoint is a config value so any Valhalla instance works |
 | Geocoding | [Photon](https://github.com/komoot/photon) via komoot's public instance | Open-source OSM geocoder built for search-as-you-type; endpoint configurable, self-hostable |
 | Location | Google Play fused location when Play Services is present (`full` flavour), Android `LocationManager` otherwise and in the `foss` flavour | Faster, steadier fixes on Play devices; still runs on GMS-free ROMs |
-| Build | Android Gradle Plugin 9.0, Gradle 9.7, Kotlin 2.3, Java 17 bytecode target built on a JDK 25 toolchain, `minSdk` 29 | Same toolchain Ferrostar is tested with; the Gradle daemon is pinned to JDK 25 |
+| Build | Android Gradle Plugin 9.1.1, Gradle 9.7, Kotlin 2.4.10, Java 17 bytecode target built on a JDK 25 toolchain, `minSdk` 29 | Compile SDK 37, target SDK 36; the Gradle daemon is pinned to JDK 25 |
 
 ## Build and run
 
@@ -29,8 +29,8 @@ See [agent setup](CONTRIBUTING.md#claude-code-and-codex) for sign-in and shared 
 
 Requirements: a JDK 25 toolchain (the Gradle daemon is pinned to it via
 `gradle/gradle-daemon-jvm.properties`) and an
-Android SDK with platform 36 and build-tools 36.0.0
-(`sdkmanager "platforms;android-36" "build-tools;36.0.0"`).
+Android SDK with platform 37 and build-tools 36.0.0
+(`sdkmanager "platforms;android-37.0" "build-tools;36.0.0"`).
 
 ```sh
 cp local.properties.example local.properties   # optional; set sdk.dir there if ANDROID_HOME is not exported

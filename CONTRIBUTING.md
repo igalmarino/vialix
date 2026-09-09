@@ -6,7 +6,7 @@ Thanks for helping. This page covers the mechanics; the architecture and its rea
 
 ## Setting up
 
-You need a JDK 25 toolchain and an Android SDK with platform 36 and build-tools 36.0.0. The
+You need a JDK 25 toolchain and an Android SDK with platform 37 and build-tools 36.0.0. The
 [dev container](.devcontainer) has both; otherwise see the *Build and run* section of the README.
 
 ```sh
@@ -61,8 +61,8 @@ execution outside the sandbox.
   (`values-de`, `values-es`, `values-fr`, `values-it`); a missing one is a lint error. British
   spelling in the base strings.
 - Dependency versions live only in `gradle/libs.versions.toml`. Ferrostar and MapLibre Compose move
-  together, and AGP / Kotlin / Compose mirror what Ferrostar is built against: check its release
-  notes before bumping any of them.
+  together; AGP / Kotlin / Compose must support the chosen compile SDK and pass both flavours
+  including R8 release builds. Check Ferrostar's release notes before bumping any of them.
 - Update `ARCHITECTURE.md`, `AGENTS.md` and the README where relevant, and add a line
   to `CHANGELOG.md` under *Unreleased*.
 - Source files start with the SPDX header (`GPL-3.0-or-later`). Your contributions are licensed

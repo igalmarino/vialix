@@ -3,6 +3,21 @@
 Detailed design notes for Vialix. Paths below are relative to the repository root.
 See [AGENTS.md](AGENTS.md) for build commands and contribution conventions.
 
+## Build compatibility
+
+The app compiles against Android SDK 37 for Core KTX 1.19.0 and Compose BOM 2026.08.00
+(Compose 1.12), with AGP 9.1.1 and Kotlin 2.4.10. Its target SDK remains 36 and minimum SDK 29;
+compiling against newer APIs does not opt the app into Android 17 target behaviours. The Gradle
+9.7.1 daemon stays on JDK 25 and app bytecode remains Java 17. SDK provisioning in CI, release
+and the dev container uses platform 37.0 with build-tools 36.0.0. Lint reports the expected
+`OldTargetApi` warning until the separate target-SDK-37 migration is tested.
+
+Ferrostar 0.54.0 and MapLibre Compose 0.13.0 remain a matched pair of published libraries.
+The app's AGP / Kotlin / Compose toolchain is upgraded separately and checked with both debug
+builds, JVM tests, lint and R8 release builds; it no longer mirrors Ferrostar's own build tools.
+The classic Android DSL opt-out is retained during this upgrade. Dependabot keeps these
+coordinated dependencies excluded from automatic updates.
+
 ## Configuration flow
 
 Build-time config supplies defaults; a small set of settings is adjustable at runtime (see

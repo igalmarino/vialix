@@ -34,7 +34,7 @@
 		"source=vialix-gh-config,target=/home/vscode/.config/gh,type=volume"
 	],
 
-	// Installs the Android command-line tools, platform 36, build-tools 36.0.0 and platform-tools,
+	// Installs the Android command-line tools, platform 37, build-tools 36.0.0 and platform-tools,
 	// then Claude Code and Codex via their user-owned native installers.
 	"postCreateCommand": "bash .devcontainer/install-android-sdk.sh && bash .devcontainer/install-claude-code.sh && bash .devcontainer/install-codex.sh",
 
