@@ -7,7 +7,7 @@ and the project uses [semantic versioning](https://semver.org).
 
 ### Added
 - Current speed during guidance in km/h or mph, with unavailable or stale readings shown as a dash.
-- Shared instructions for Claude Code and Codex, with both agents provisioned in the dev container.
+- Repository instructions for Antigravity in AGENTS.md.
 - Open `geo:` links and "Directions" requests from other apps: a coordinate previews the route,
   free text opens the search.
 - A snackbar with a *Turn on* action when the system location switch is off.
@@ -22,6 +22,7 @@ and the project uses [semantic versioning](https://semver.org).
 - A ktlint formatting gate in CI.
 
 ### Changed
+- Replace Claude Code and Codex tooling with Antigravity.
 - Upgrade AndroidX Core KTX to 1.19.0 and Compose BOM to 2026.08.00, with AGP 9.1.1
   and compile SDK 37; target SDK remains 36. CI and SDK provisioning use platform 37.0.
 - Travel times are formatted in the guidance language ("25 min", "1 hr, 25 min") instead of

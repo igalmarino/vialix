@@ -1,7 +1,6 @@
 # AGENTS.md
 
-Shared repository instructions for Codex and Claude Code. Codex reads this file directly;
-`CLAUDE.md` imports it for Claude Code. Keep common instructions here rather than duplicating them.
+Repository instructions for Antigravity. Keep instructions here rather than duplicating them.
 
 ## Project
 
