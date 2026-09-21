@@ -24,8 +24,8 @@ route, and a foreground notification so guidance survives backgrounding.
 
 ## Build and run
 
-The [dev container](.devcontainer) provisions the Android toolchain, Claude Code and Codex.
-See [agent setup](CONTRIBUTING.md#claude-code-and-codex) for sign-in and shared instructions.
+The [dev container](.devcontainer) provisions the Android toolchain.
+See [agent setup](CONTRIBUTING.md#antigravity) for Antigravity instructions.
 
 Requirements: a JDK 25 toolchain (the Gradle daemon is pinned to it via
 `gradle/gradle-daemon-jvm.properties`) and an

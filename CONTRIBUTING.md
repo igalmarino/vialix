@@ -1,8 +1,8 @@
 # Contributing to Vialix
 
 Thanks for helping. This page covers the mechanics; the architecture and its reasoning are in
-[`ARCHITECTURE.md`](ARCHITECTURE.md). Shared coding-agent instructions live in
-[`AGENTS.md`](AGENTS.md); Claude Code loads them through [`CLAUDE.md`](CLAUDE.md).
+[`ARCHITECTURE.md`](ARCHITECTURE.md). Coding agent instructions live in
+[`AGENTS.md`](AGENTS.md).
 
 ## Setting up
 
@@ -17,35 +17,17 @@ adb install -r app/build/outputs/apk/full/debug/app-full-debug.apk
 The debug build has the application id `com.galmarino.vialix.debug`, so it installs next to a
 release build.
 
-## Claude Code and Codex
+## Antigravity
 
-The dev container installs both CLIs and VS Code extensions. Rebuild the container after changes
-under `.devcontainer/`; each CLI's login and settings live in its own persistent Docker volume.
-From the repository root, run `claude` or `codex` and sign in on first use. Existing containers can
-install the CLIs with `bash .devcontainer/install-claude-code.sh` and
-`bash .devcontainer/install-codex.sh`.
+Vialix uses [Antigravity](https://antigravity.google) for AI-assisted development.
+Repository instructions and conventions live in [`AGENTS.md`](AGENTS.md), which
+Antigravity discovers and loads automatically.
 
-Both agents use the same Gradle commands above. `AGENTS.md` holds the shared commands and
-conventions; `CLAUDE.md` imports it using [Claude Code's supported import syntax](https://code.claude.com/docs/en/memory#agentsmd).
-Keep detailed design notes in `ARCHITECTURE.md` so the shared instructions stay below
-[Codex's default 32 KiB limit](https://developers.openai.com/codex/guides/agents-md).
-Restart the agent session after changing its instructions. In Claude Code, `/context` shows the
-loaded memory files; in either agent, ask it to summarise the repository instructions to check them.
-
-Check installation and authentication with:
-
-```sh
-claude --version
-claude auth status
-codex --version
-codex login status
-```
+Keep detailed design notes in `ARCHITECTURE.md` so the instructions stay focused on
+commands and conventions.
 
 Gradle writes to `~/.gradle` and downloads dependencies on the first build. If an agent's sandbox
-blocks those operations, approve the specific build command when prompted. Some container hosts
-disable unprivileged user namespaces, which prevents Codex's Linux sandbox from starting even
-for read-only commands; this requires a host/container sandbox configuration change or approved
-execution outside the sandbox.
+blocks those operations, approve the specific build command when prompted.
 
 ## Making a change
 

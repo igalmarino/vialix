@@ -15,36 +15,29 @@
 	// AGP reads ANDROID_HOME when local.properties (git-ignored) is absent.
 	"containerEnv": {
 		"ANDROID_HOME": "/opt/android-sdk",
-		"ANDROID_SDK_ROOT": "/opt/android-sdk",
-		// Keep all Claude Code state (login, settings, memory) in one dir so a single volume persists it.
-		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+		"ANDROID_SDK_ROOT": "/opt/android-sdk"
 	},
 	"remoteEnv": {
-		// ~/.local/bin holds the native Claude Code and Codex installs.
 		"PATH": "/home/vscode/.local/bin:${containerEnv:PATH}:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools"
 	},
 
-	// Persist Gradle downloads, both agents' login/settings and the gh login across rebuilds.
-	// The volume names predate the OpenNav -> Vialix rename; renaming them would start with an
-	// empty Gradle cache and a fresh ~/.claude, so they are kept as they are.
+	// Persist Gradle downloads, Antigravity settings and the gh login across rebuilds.
+	// The vialix-gradle-cache volume name predates the OpenNav -> Vialix rename; renaming it would
+	// start with an empty Gradle cache, so it is kept as is.
 	"mounts": [
 		"source=vialix-gradle-cache,target=/home/vscode/.gradle,type=volume",
-		"source=vialix-claude-config,target=/home/vscode/.claude,type=volume",
-		"source=vialix-codex-config,target=/home/vscode/.codex,type=volume",
+		"source=vialix-gemini-config,target=/home/vscode/.gemini,type=volume",
 		"source=vialix-gh-config,target=/home/vscode/.config/gh,type=volume"
 	],
 
-	// Installs the Android command-line tools, platform 37, build-tools 36.0.0 and platform-tools,
-	// then Claude Code and Codex via their user-owned native installers.
-	"postCreateCommand": "bash .devcontainer/install-android-sdk.sh && bash .devcontainer/install-claude-code.sh && bash .devcontainer/install-codex.sh",
+	// Installs the Android command-line tools, platform 37, build-tools 36.0.0 and platform-tools.
+	"postCreateCommand": "bash .devcontainer/install-android-sdk.sh",
 
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"fwcd.kotlin",
-				"vscjava.vscode-gradle",
-				"anthropic.claude-code",
-				"openai.chatgpt"
+				"vscjava.vscode-gradle"
 			],
 			"settings": {
 				"java.configuration.runtimes": [
